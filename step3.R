@@ -142,7 +142,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   
   #### 5) mixture modeling ####
   # maximum number of iterations:
-  set.seed(8389493)#!!!! work on the whole replicability thing!!!!
+  #set.seed(8389493)#!!!! work on the whole replicability thing!!!!
   # provide seeds for the multiple starts (for replicability)
   seeds <- sample(1:100000000, nstarts)
   best_fit <- NULL
@@ -165,17 +165,19 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       #fitting lavaan model and updating the class proportions
       if(it == 1) {
         output <- lavaan(fullmodel, data = data_expanded_start, int.ov.free = FALSE, auto.var = FALSE,
-                             group = "cluster", sampling.weight = "w",
-                             baseline = FALSE, se = "none", h1 = FALSE)
+                         group = "cluster", sampling.weight = "w",
+                         baseline = FALSE, se = "none", h1 = FALSE,
+                         ridge = TRUE)
         fit <- output
         start <- coef(fit)
       } else {
         output <- lavaan(fullmodel, data = data_expanded_start, int.ov.free = FALSE, auto.var = FALSE,
-                             group = "cluster", sampling.weight = "w",
-                             baseline = FALSE, se = "none", h1 = FALSE,
-                             check.post = FALSE,
-                             control = list(rel.tol = 1e-06),
-                             start = start)
+                         group = "cluster", sampling.weight = "w",
+                         baseline = FALSE, se = "none", h1 = FALSE,
+                         check.post = FALSE,
+                         control = list(rel.tol = 1e-06),
+                         start = start,
+                         ridge = TRUE)
         fit <- output
         start <- coef(fit)
       }
@@ -236,7 +238,8 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   w <- best_w
   data_expanded <- cbind(data_expanded, w)
   fit <- lavaan(fullmodel, data = data_expanded, int.ov.free = FALSE, auto.var = FALSE,
-                group = "cluster", sampling.weight = "w", ridge = TRUE)
+                group = "cluster", sampling.weight = "w",
+                ridge = TRUE)
   
   #### find proxy maximum ###
   # w_true <- ifelse(data_expanded$cluster == data_expanded$k_true, .9999999, 1-.9999999) # this doesn't work! Need less extreme values I think, then feed to algorithm?
@@ -247,7 +250,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
 
   
   #### 5) extract estimates ####
-  ## TO DO: make this more flexible to accommodate for custom SM (provided by user)\
+  ## TO DO: make this more flexible to accommodate for custom SM (provided by user)
   params <- coef(fit)
   phi_names <- unique(names(params))[grep("^phi", unique(names(params)))]
   phis <- purrr::map_dbl(phi_names,\(x) params[names(params) == x][1])

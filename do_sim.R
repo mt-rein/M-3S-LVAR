@@ -6,18 +6,30 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   # outputfile = file name for the output CSV file
   # verbose = if TRUE, prints a message after the iteration is finished
   
+  #### for testing:
   # pos = 1
+  # replication <- 1
+  # iteration <- 1
+  # # get condition levels and set seed:
+  # n <- 48
+  # obs <- 50
+  # n_k = 4
+  # k_size =  "balanced" |> as.character()
+  # rho_gen =  "medium" |> as.character()
+  # similarity =  "dissimilar" |> as.character()
+  # innovars =  "equal" |> as.character()
+  
+
   replication <- cond$replication[pos]
   iteration <- cond$iteration[pos]
   # get condition levels and set seed:
-  n <- 96#cond$n[pos]
+  n <- cond$n[pos]
   obs <- cond$obs[pos]
   n_k = cond$n_k[pos]
   k_size =  cond$k_size[pos] |> as.character()
   rho_gen =  cond$rho_gen[pos] |> as.character()
   similarity =  cond$similarity[pos] |> as.character()
   innovars =  cond$innovars[pos] |> as.character()
-
   seed_cond <- cond$seed[pos]
   set.seed(seed_cond)
   
@@ -344,7 +356,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   if(!step1_error & !step2_error){                                              # only proceed if there is no error in step 1 as well as step 2
     output_step3 <- run_step3(step2output = output_step2$result$result,
                               n_clusters = n_k,
-                              nstarts = 2, maxit = 5,
+                              nstarts = 1, maxit = 100,
                               structuralmodel = NULL,
                               verbose = FALSE)
     
@@ -367,66 +379,57 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     step3_warning <- FALSE
     step3_warning_text <- "step1 or step2 not successful"
     step3_error <- FALSE
-    step3_error_text <- "step2 or step2 not successful"
-    
-    duration = NA
-    nonconvergences = NA
-    phi11_k1 <- NA
-    phi12_k1 <- NA
-    phi21_k1 <- NA
-    phi22_k1 <- NA
-    
-    phi11_k2 <- NA
-    phi12_k2 <- NA
-    phi21_k2 <- NA
-    phi22_k2 <- NA
-    
-    phi11_k3 <- NA
-    phi12_k3 <- NA
-    phi21_k3 <- NA
-    phi22_k3 <- NA
-    
-    phi11_k4 <- NA
-    phi12_k4 <- NA
-    phi21_k4 <- NA
-    phi22_k4 <- NA
-    
-    zeta1 <- NA
-    zeta1 <- NA
-    zeta12 <- NA
-    
-    ARI <- NA
+    step3_error_text <- "step1 or step2 not successful"
     }
   
-  if(!step3_error){
+  if(!step1_error & !step2_error & !step3_error){
     final_output <- output_step3$result$result
-    duration = final_output$other$duration
-    # phi estimates in cluster 1:
+    duration = final_output$other$duration |> as.numeric()
     nonconvergences = final_output$other$nonconvergences
-    phi11_k1 <- final_output$estimates$phi["phi_f1_f1_k1"] |> as.numeric()
-    phi12_k1 <- final_output$estimates$phi["phi_f1_f2_k1"] |> as.numeric()
-    phi21_k1 <- final_output$estimates$phi["phi_f2_f1_k1"] |> as.numeric()
-    phi22_k1 <- final_output$estimates$phi["phi_f2_f2_k1"] |> as.numeric()
+    
+    # estimates in cluster 1:
+    phi11_k1 <- final_output$estimates$estimates_k1["phi11_k1"] |> as.numeric()
+    phi12_k1 <- final_output$estimates$estimates_k1["phi12_k1"] |> as.numeric()
+    phi21_k1 <- final_output$estimates$estimates_k1["phi21_k1"] |> as.numeric()
+    phi22_k1 <- final_output$estimates$estimates_k1["phi22_k1"] |> as.numeric()
+    
+    zeta1_k1 <- final_output$estimates$estimates_k1["zeta1"] |> as.numeric()
+    zeta2_k1 <- final_output$estimates$estimates_k1["zeta2"] |> as.numeric()
+    zeta12_k1 <- final_output$estimates$estimates_k1["zeta12"] |> as.numeric()
     
     # estimates in cluster 2:
-    phi11_k2 <- final_output$estimates$phi["phi_f1_f1_k2"] |> as.numeric()
-    phi12_k2 <- final_output$estimates$phi["phi_f1_f2_k2"] |> as.numeric()
-    phi21_k2 <- final_output$estimates$phi["phi_f2_f1_k2"] |> as.numeric()
-    phi22_k2 <- final_output$estimates$phi["phi_f2_f2_k2"] |> as.numeric()
+    phi11_k2 <- final_output$estimates$estimates_k2["phi11_k2"] |> as.numeric()
+    phi12_k2 <- final_output$estimates$estimates_k2["phi12_k2"] |> as.numeric()
+    phi21_k2 <- final_output$estimates$estimates_k2["phi21_k2"] |> as.numeric()
+    phi22_k2 <- final_output$estimates$estimates_k2["phi22_k2"] |> as.numeric()
+    
+    zeta1_k2 <- final_output$estimates$estimates_k2["zeta1"] |> as.numeric()
+    zeta2_k2 <- final_output$estimates$estimates_k2["zeta2"] |> as.numeric()
+    zeta12_k2 <- final_output$estimates$estimates_k2["zeta12"] |> as.numeric()
     
     # estimates in cluster 3 and 4 (if applicable)
     if(n_k == 4){
       # estimates in cluster 3:
-      phi11_k3 <- final_output$estimates$phi["phi_f1_f1_k3"] |> as.numeric()
-      phi12_k3 <- final_output$estimates$phi["phi_f1_f2_k3"] |> as.numeric()
-      phi21_k3 <- final_output$estimates$phi["phi_f2_f1_k3"] |> as.numeric()
-      phi22_k3 <- final_output$estimates$phi["phi_f2_f2_k3"] |> as.numeric()
+      phi11_k3 <- final_output$estimates$estimates_k3["phi11_k3"] |> as.numeric()
+      phi12_k3 <- final_output$estimates$estimates_k3["phi12_k3"] |> as.numeric()
+      phi21_k3 <- final_output$estimates$estimates_k3["phi21_k3"] |> as.numeric()
+      phi22_k3 <- final_output$estimates$estimates_k3["phi22_k3"] |> as.numeric()
+      
+      zeta1_k3 <- final_output$estimates$estimates_k3["zeta1"] |> as.numeric()
+      zeta2_k3 <- final_output$estimates$estimates_k3["zeta2"] |> as.numeric()
+      zeta12_k3 <- final_output$estimates$estimates_k3["zeta12"] |> as.numeric()
       
       # estimates in cluster 4:
-      phi11_k4 <- final_output$estimates$phi["phi_f1_f1_k4"] |> as.numeric()
-      phi12_k4 <- final_output$estimates$phi["phi_f1_f2_k4"] |> as.numeric()
-      phi21_k4 <- final_output$estimates$phi["phi_f2_f1_k4"] |> as.numeric()
-      phi22_k4 <- final_output$estimates$phi["phi_f2_f2_k4"] |> as.numeric()
+      phi11_k4 <- final_output$estimates$estimates_k4["phi11_k4"] |> as.numeric()
+      phi12_k4 <- final_output$estimates$estimates_k4["phi12_k4"] |> as.numeric()
+      phi21_k4 <- final_output$estimates$estimates_k4["phi21_k4"] |> as.numeric()
+      phi22_k4 <- final_output$estimates$estimates_k4["phi22_k4"] |> as.numeric()
+      
+      zeta1_k4 <- final_output$estimates$estimates_k4["zeta1"] |> as.numeric()
+      zeta2_k4 <- final_output$estimates$estimates_k4["zeta2"] |> as.numeric()
+      zeta12_k4 <- final_output$estimates$estimates_k4["zeta12"] |> as.numeric()
+      
+      
     } else {
       # set everything to NA if only 2 clusters
       phi11_k3 <- NA
@@ -434,17 +437,20 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
       phi21_k3 <- NA
       phi22_k3 <- NA
       
+      zeta1_k3 <- NA
+      zeta2_k3 <- NA
+      zeta12_k3 <- NA
+      
       phi11_k4 <- NA
       phi12_k4 <- NA
       phi21_k4 <- NA
       phi22_k4 <- NA
+      
+      zeta1_k4 <- NA
+      zeta2_k4 <- NA
+      zeta12_k4 <- NA
     }
-    
-    # zeta estimates:
-    zeta1 <- final_output$estimates$zeta["zeta_f1_f1"] |> as.numeric()
-    zeta2 <- final_output$estimates$zeta["zeta_f2_f2"] |> as.numeric()
-    zeta12 <- final_output$estimates$zeta["zeta_f1_f2"] |> as.numeric()
-    
+
     # ARI:
     clusterassignment_estimated <- apply(final_output$clustering$assignment, 1, function(row) {
       class_index <- which(row == 1)
@@ -458,24 +464,36 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     phi21_k1 <- NA
     phi22_k1 <- NA
     
+    zeta1_k1 <- NA
+    zeta2_k1 <- NA
+    zeta12_k1 <- NA
+    
     phi11_k2 <- NA
     phi12_k2 <- NA
     phi21_k2 <- NA
     phi22_k2 <- NA
+    
+    zeta1_k2 <- NA
+    zeta2_k2 <- NA
+    zeta12_k2 <- NA
     
     phi11_k3 <- NA
     phi12_k3 <- NA
     phi21_k3 <- NA
     phi22_k3 <- NA
     
+    zeta1_k3 <- NA
+    zeta2_k3 <- NA
+    zeta12_k3 <- NA
+    
     phi11_k4 <- NA
     phi12_k4 <- NA
     phi21_k4 <- NA
     phi22_k4 <- NA
     
-    zeta1 <- NA
-    zeta1 <- NA
-    zeta12 <- NA
+    zeta1_k4 <- NA
+    zeta2_k4 <- NA
+    zeta12_k4 <- NA
     
     ARI <- NA
   }
@@ -493,14 +511,17 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
               "phi11_k2" = phi11_k2, "phi12_k2" = phi12_k2, "phi21_k2" = phi21_k2, "phi22_k2" = phi22_k2,
               "phi11_k3" = phi11_k3, "phi12_k3" = phi12_k3, "phi21_k3" = phi21_k3, "phi22_k3" = phi22_k3,
               "phi11_k4" = phi11_k4, "phi12_k4" = phi12_k4, "phi21_k4" = phi21_k4, "phi22_k4" = phi22_k4,
-              "zeta1" = zeta1, "zeta2" = zeta2, "zeta12" = zeta12,
+              "zeta1_k1" = zeta1_k1, "zeta2_k1" = zeta2_k1, "zeta12_k1" = zeta12_k1,
+              "zeta1_k2" = zeta1_k2, "zeta2_k2" = zeta2_k2, "zeta12_k2" = zeta12_k2,
+              "zeta1_k3" = zeta1_k3, "zeta2_k3" = zeta2_k3, "zeta12_k3" = zeta12_k3,
+              "zeta1_k4" = zeta1_k4, "zeta2_k4" = zeta2_k4, "zeta12_k4" = zeta12_k4,
               "step1_warning" = step1_warning, "step2_warning" = step2_warning, "step3_warning" = step3_warning,
               "step1_error" = step1_error, "step2_error" = step2_error, "step3_error" = step3_error,
               "seed" = seed_cond, "pos" = pos,
               "step1_warning_text" = step1_warning_text, "step2_warning_text" = step2_warning_text, "step3_warning_text" = step3_warning_text,
               "step1_error_text" = step1_error_text, "step2_error_text" = step2_error_text, "step3_error_text" = step3_error_text)
   
-  for(i in 57:62){
+  for(i in 66:71){
     output[i] <- str_squish(output[i])                                          # removes all whitespace and linebreaks from the error and warning strings
     output[i] <- gsub(",", "", output[i])                                       # removes all commata from error and warning strings (to prevent messing up the CSV file)
   }
