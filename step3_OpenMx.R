@@ -4,7 +4,7 @@
 # structuralmodel = NULL
 
 step3 <- function(step2output, structuralmodel = NULL, n_clusters,
-                  nstarts = 20, maxit = 100, verbose = FALSE){
+                         nstarts = 20, maxit = 100, verbose = FALSE){
   # step2output:
   #   the object that was generated using the step2() function
   # structuralmodel (optional):
@@ -13,37 +13,16 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   #   will be specified by default.
   
   
-  # #### FOR TESTING ####
+  #### FOR TESTING ####
   # step2output = output_step2$result$result
   # n_clusters = n_k
-  # nstarts = 10
+  # nstarts = 1
   # maxit = 100
   # structuralmodel = NULL
   # verbose = TRUE
-  # 
+  # # 
   
   #### 1) Preparations ####
-  EStep <- function(pi_ks, ngroup, nclus, loglik){
-    
-    max_g <-rep(0,ngroup)
-    z_gks <- matrix(NA,nrow = ngroup,ncol = nclus)
-    
-    for(g in 1:ngroup){
-      for(k in 1:nclus){
-        z_gks[g,k] <- log(pi_ks[k])+loglik[g,k]
-      }
-      max_g[g] <- max(z_gks[g,]) # prevent arithmetic underflow 
-      z_gks[g,] <- exp(z_gks[g,]-rep(max_g[g],nclus))
-    }
-    
-    # divide by the rowwise sum of the above calculated part 
-    z_gks <- diag(1/apply(z_gks,1,sum))%*%z_gks
-    # z_gks <- round(z_gks, digits = 16)
-    # z_gks <- diag(1/apply(z_gks,1,sum))%*%z_gks
-    
-    return(z_gks)
-  }
-  # taken from https://github.com/AndresFPA/mmgsem/blob/main/R/E_Step.R
   ## extract objects from step 1 output:
   data <- step2output$data
   rho <- step2output$rho
@@ -69,14 +48,21 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   udim <- 1 # exogenous covariates (ignored so far)
   ydim <- length(factors) # number of indicators (i.e., factor score variables)
   
+  sv_k1 <- runif(4, -.3, .3)
+  sv_k2 <- runif(4, -.3, .3)
+  if(n_clusters == 4){
+    sv_k3 <- runif(4, -.3, .3)
+    sv_k4 <- runif(4, -.3, .3)
+  }
+  
   ## A matrices (= dynamics)
   amat_k1 <- mxMatrix(type = "Full", nrow = xdim, ncol = xdim,
                       free = c(TRUE, TRUE, FALSE, FALSE,
                                TRUE, TRUE, FALSE, FALSE,
                                FALSE, FALSE, FALSE, FALSE,
                                FALSE, FALSE, FALSE, FALSE),
-                      values = c(0, .3, 1, 0,
-                                 .3, .6, 0, 1,
+                      values = c(sv_k1[1], sv_k1[2], 1, 0,
+                                 sv_k1[3], sv_k1[4], 0, 1,
                                  0, 0, 1, 0,
                                  0, 0, 0, 1),
                       name = "A1",
@@ -99,8 +85,8 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
                                TRUE, TRUE, FALSE, FALSE,
                                FALSE, FALSE, FALSE, FALSE,
                                FALSE, FALSE, FALSE, FALSE),
-                      values = c(.6, -.3, 1, 0,
-                                 .3, .6, 0, 1,
+                      values = c(sv_k2[1], sv_k2[2], 1, 0,
+                                 sv_k2[3], sv_k2[4], 0, 1,
                                  0, 0, 1, 0,
                                  0, 0, 0, 1),
                       name = "A2",
@@ -124,8 +110,8 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
                                  TRUE, TRUE, FALSE, FALSE,
                                  FALSE, FALSE, FALSE, FALSE,
                                  FALSE, FALSE, FALSE, FALSE),
-                        values = c(.3, .3, 1, 0,
-                                   .3, .3, 0, 1,
+                        values = c(sv_k3[1], sv_k3[2], 1, 0,
+                                   sv_k3[3], sv_k3[4], 0, 1,
                                    0, 0, 1, 0,
                                    0, 0, 0, 1),
                         name = "A3",
@@ -148,8 +134,8 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
                                  TRUE, TRUE, FALSE, FALSE,
                                  FALSE, FALSE, FALSE, FALSE,
                                  FALSE, FALSE, FALSE, FALSE),
-                        values = c(.3, .3, 1, 0,
-                                   .3, .3, 0, 1,
+                        values = c(sv_k4[1], sv_k4[2], 1, 0,
+                                   sv_k4[3], sv_k4[4], 0, 1,
                                    0, 0, 1, 0,
                                    0, 0, 0, 1),
                         name = "A4",
@@ -192,8 +178,8 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
                             TRUE, TRUE, FALSE, FALSE,
                             FALSE, FALSE, FALSE, FALSE,
                             FALSE, FALSE, FALSE, FALSE),
-                   values = c(1.5, .5, 0, 0,
-                              .5, 1.5, 0, 0,
+                   values = c(1, .3, 0, 0,
+                              .3, 1, 0, 0,
                               0, 0,  0, 0,
                               0, 0,  0, 0),
                    name = "Q",
@@ -295,7 +281,6 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   #set.seed(8389493)#!!!! work on the whole replicability thing!!!!
   # provide seeds for the multiple starts (for replicability)
   seeds <- sample(1:100000000, nstarts)
-  best_fit <- NULL
   nonconvergences <- 0
   estimation_start <- Sys.time()
   # loop across the random starts
@@ -351,11 +336,12 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       }
       if(n_clusters == 4){
         fullmodel <- mxModel("fullmodel", model_k1, model_k2, model_k3, model_k4,
-                             mxFitFunctionMultigroup(c("model_k1", "model_k2", "model_k3", "model_k4")))
+                             mxFitFunctionMultigroup(c("model_k1", "model_k2", "model_k3", "model_k4"))
+        )
       }
       
-      fullmodelr <- mxRun(fullmodel)
-      summary(fullmodelr)
+      
+      fullmodelr <- mxRun(fullmodel, silent = !verbose, suppressWarnings = TRUE)
       
       # compute class proportions:
       class_proportions <- colMeans(post)
@@ -388,9 +374,6 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       # compute total log likelihood
       total_loglik = sum(casewise.loglik*post)
       
-      # update posteriors:
-      post <- EStep(pi = class_proportions, ngroup = n, nclus = n_clusters, loglik = casewise.loglik)
-      
       
       if(verbose){
         if(it != 1){
@@ -401,11 +384,22 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
         
       }
       # check convergence:
-      if(it>1&&(total_loglik - loglik0)<1.0e-6){
-        print("Convergence achieved.")
+      if(it>1 && (total_loglik - loglik0)<1.0e-6){
+        if(verbose){
+          print("Convergence achieved.")
+        }
+        if(total_loglik < loglik0){
+          fullmodelr <- fullmodelr0
+          total_loglik <- loglik0
+        }
         break
       }
+      # update posteriors:
+      post <- EStep(pi = class_proportions, ngroup = n, nclus = n_clusters, loglik = casewise.loglik)
+      
       loglik0 = total_loglik
+      fullmodelr0 = fullmodelr
+      
       if(it == maxit){
         if(verbose){
           print(paste("Max iterations reached without convergence. Start:", i))
@@ -428,7 +422,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
         best_post <- post
         best_model <- fullmodelr
       }
-      if(it > most_iteratations){
+      if(it > most_iterations){
         most_iterations <- it
       }
     }
@@ -450,9 +444,9 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   loglik <- best_loglik
   post <- best_post
   assignment <- round(post)
-  pi <- colMeans(post)
+  class_proportions <- colMeans(post)
   
-  clustering <- list("pi" = pi,
+  clustering <- list("class_proportions" = class_proportions,
                      "posterior_prob" = post,
                      "assignment" = assignment)
   

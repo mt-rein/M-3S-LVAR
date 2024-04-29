@@ -37,6 +37,29 @@ sim_VAR <- function(factors, obs, phi, zeta, mu, intercept, burn_in = 0){
   return(data)
 }
 
+#### EStep() ####
+EStep <- function(pi_ks, ngroup, nclus, loglik){
+  
+  max_g <-rep(0,ngroup)
+  z_gks <- matrix(NA,nrow = ngroup,ncol = nclus)
+  
+  for(g in 1:ngroup){
+    for(k in 1:nclus){
+      z_gks[g,k] <- log(pi_ks[k])+loglik[g,k]
+    }
+    max_g[g] <- max(z_gks[g,]) # prevent arithmetic underflow 
+    z_gks[g,] <- exp(z_gks[g,]-rep(max_g[g],nclus))
+  }
+  
+  # divide by the rowwise sum of the above calculated part 
+  z_gks <- diag(1/apply(z_gks,1,sum))%*%z_gks
+  # z_gks <- round(z_gks, digits = 16)
+  # z_gks <- diag(1/apply(z_gks,1,sum))%*%z_gks
+  
+  return(z_gks)
+}
+# taken from https://github.com/AndresFPA/mmgsem/blob/main/R/E_Step.R
+
 #### safely/quietly functions ####
 run_step1 <- quietly(safely(step1))
 run_step2 <- quietly(safely(step2))
