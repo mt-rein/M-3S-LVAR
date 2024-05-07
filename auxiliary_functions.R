@@ -2,7 +2,7 @@
 
 #### sim_VAR() ####
 # this function generates data for a single individual according to a vector autoregressive model
-sim_VAR <- function(factors, obs, phi, zeta, mu, intercept, burn_in = 0){
+sim_VAR <- function(factors, obs, phi, zeta, mu, burn_in = 0){
   # obs = number of observations
   # phi = auto-regressive effect (a matrix in case of multiple constructs)
   # zeta = innovation variance (a matrix in case of multiple constructs)
@@ -13,6 +13,8 @@ sim_VAR <- function(factors, obs, phi, zeta, mu, intercept, burn_in = 0){
   # create empty dataframe of length obs + burn_in
   data <- as.data.frame(matrix(NA, nrow = burn_in + obs, ncol = factors))
   names(data) <- paste0("eta", 1:factors)
+  
+  intercept <- solve(solve(diag(factors) - phi), mu)
   
   for(i in 1:nrow(data)){
     # simulate the first observation from the person's starting point (= intercept)

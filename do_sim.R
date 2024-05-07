@@ -7,17 +7,17 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   # verbose = if TRUE, prints a message after the iteration is finished
   
   #### for testing:
-  # pos = 1
-  # replication <- 1
-  # iteration <- 1
-  # # get condition levels and set seed:
-  # n <- 48
-  # obs <- 50
-  # n_k = 4
-  # k_size =  "balanced" |> as.character()
-  # rho_gen =  "medium" |> as.character()
-  # similarity =  "dissimilar" |> as.character()
-  # innovars =  "equal" |> as.character()
+  pos = 1
+  replication <- 1
+  iteration <- 1
+  # get condition levels and set seed:
+  n <- 48
+  obs <- 50
+  n_k = 2
+  k_size =  "balanced" |> as.character()
+  rho_gen =  "large" |> as.character()
+  similarity =  "dissimilar" |> as.character()
+  innovars =  "equal" |> as.character()
   
 
   replication <- cond$replication[pos]
@@ -207,11 +207,9 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     mu_i <- c(rnorm(1, mean = grandmeans[1], sd = 2),                           # person specific mean on variable 1
               rnorm(1, mean = grandmeans[2], sd = 2))                           # person specific mean on variable 2
     
-    icp_i <- solve(solve(diag(2) - phimat), mu_i)                               # person specific intercept (depends on means and phi)
-    
     eta_i <- sim_VAR(factors = 2, obs = obs,
                      phi = phimat, zeta = zetamat,
-                     mu = mu_i, intercept = icp_i,
+                     mu = mu_i,
                      burn_in = 10)
     
     # add id and true cluster variable:
