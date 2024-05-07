@@ -14,13 +14,12 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   
   
   #### FOR TESTING ####
-  # step2output = output_step2$result$result
-  # n_clusters = n_k
-  # nstarts = 1
-  # maxit = 100
-  # structuralmodel = NULL
-  # verbose = TRUE
-  # # 
+  step2output = output_step2$result$result
+  n_clusters = n_k
+  nstarts = 1
+  maxit = 100
+  structuralmodel = NULL
+  verbose = TRUE
   
   #### 1) Preparations ####
   ## extract objects from step 1 output:
@@ -216,15 +215,13 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   # u (= covariates)
   umat <- mxMatrix('Zero', nrow = udim, ncol = 1, name='u')
   
-  # collect all invariant matrices (i.e., all except the A matrices)
-  invariantMatrices <- list(bmat, cmat, dmat, qmat,
-                            rmat, xmat, pmat, umat)
-  
   #### 4) create OpenMx models ####
   # create a list of models (one for each individual) for each latent class:
+  modelnames <- paste0("id_", unique_ids)
+  objectives <- paste(modelnames, "objective", sep = ".")
   model_list_k1 <- list()
   for(i in unique_ids){
-    model_list_k1[[i]] <- mxModel(name=paste0('id_', i, "_k1"),
+    model_list_k1[[i]] <- mxModel(name = modelnames[i],
                                   amat_k1, bmat, cmat, dmat, qmat, rmat, xmat, pmat, umat,
                                   mxExpectationStateSpace('A1', 'B', 'C', 'D', 'Q', 'R', 'x0', 'P0', 'u'),
                                   mxFitFunctionML(),
@@ -233,7 +230,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   
   model_list_k2 <- list()
   for(i in unique_ids){
-    model_list_k2[[i]] <- mxModel(name=paste0('id_', i, "_k2"),
+    model_list_k2[[i]] <- mxModel(name = modelnames[i],
                                   amat_k2, bmat, cmat, dmat, qmat, rmat, xmat, pmat, umat,
                                   mxExpectationStateSpace('A2', 'B', 'C', 'D', 'Q', 'R', 'x0', 'P0', 'u'),
                                   mxFitFunctionML(),
@@ -243,7 +240,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   if(n_clusters == 4){
     model_list_k3 <- list()
     for(i in unique_ids){
-      model_list_k3[[i]] <- mxModel(name=paste0('id_', i, "_k3"),
+      model_list_k3[[i]] <- mxModel(name = modelnames[i],
                                     amat_k3, bmat, cmat, dmat, qmat, rmat, xmat, pmat, umat,
                                     mxExpectationStateSpace('A3', 'B', 'C', 'D', 'Q', 'R', 'x0', 'P0', 'u'),
                                     mxFitFunctionML(),
@@ -252,29 +249,13 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
     
     model_list_k4 <- list()
     for(i in unique_ids){
-      model_list_k4[[i]] <- mxModel(name=paste0('id_', i, "_k4"),
+      model_list_k4[[i]] <- mxModel(name = modelnames[i],
                                     amat_k4, bmat, cmat, dmat, qmat, rmat, xmat, pmat, umat,
                                     mxExpectationStateSpace('A4', 'B', 'C', 'D', 'Q', 'R', 'x0', 'P0', 'u'),
                                     mxFitFunctionML(),
                                     mxData(data[data[, id] == i, factors_ind], 'raw'))
     }
   }
-  
-  modelnames_k1 <- paste0('id_', unique_ids, "_k1")
-  modelnames_k2 <- paste0('id_', unique_ids, "_k2")
-  if(n_clusters == 4){
-    modelnames_k3 <- paste0('id_', unique_ids, "_k3")
-    modelnames_k4 <- paste0('id_', unique_ids, "_k4")
-  }
-  
-  # vector of model names (needed later)
-  objectives_k1 <- paste(modelnames_k1, "objective", sep = ".")
-  objectives_k2 <- paste(modelnames_k2, "objective", sep = ".")
-  if(n_clusters == 4){
-    objectives_k3 <- paste(modelnames_k3, "objective", sep = ".")
-    objectives_k4 <- paste(modelnames_k4, "objective", sep = ".")
-  }
-  # vector of names of the objective functions (needed later)
   
   #### 5) mixture modeling ####
   # maximum number of iterations:
@@ -309,57 +290,42 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       # the fit function is weighted by the posterior probabilities of each person-model
       # create the mxModel for cluster 1:
       weights = post[, 1]
-      weighted_objectives <- paste(weights, "*", objectives_k1, collapse = " + ")
+      weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
       model_k1 <- mxModel('model_k1', model_list_k1, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
+      model_k1r <- mxRun(model_k1, silent = !verbose, suppressWarnings = TRUE)
       
       # create the mxModel for cluster 2:
       weights = post[, 2]
-      weighted_objectives <- paste(weights, "*", objectives_k2, collapse = " + ")
+      weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
       model_k2 <- mxModel('model_k2', model_list_k2, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
+      model_k2r <- mxRun(model_k2, silent = !verbose, suppressWarnings = TRUE)
       
       # create models for clusters 3 and 4 (if applicable):
       if(n_clusters == 4){
         # create the mxModel for cluster 3:
         weights = post[, 3]
-        weighted_objectives <- paste(weights, "*", objectives_k3, collapse = " + ")
+        weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
         model_k3 <- mxModel('model_k3', model_list_k3, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
+        model_k3r <- mxRun(model_k3, silent = !verbose, suppressWarnings = TRUE)
         
         # create the mxModel for cluster 4:
         weights = post[, 4]
-        weighted_objectives <- paste(weights, "*", objectives_k4, collapse = " + ")
+        weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
         model_k4 <- mxModel('model_k4', model_list_k4, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
+        model_k4r <- mxRun(model_k4, silent = !verbose, suppressWarnings = TRUE)
       }
-      
-      # combine all models in one full model
-      if(n_clusters == 2){
-        fullmodel <- mxModel("fullmodel", model_k1, model_k2, mxFitFunctionMultigroup(c("model_k1", "model_k2")))
-      }
-      if(n_clusters == 4){
-        fullmodel <- mxModel("fullmodel", model_k1, model_k2, model_k3, model_k4,
-                             mxFitFunctionMultigroup(c("model_k1", "model_k2", "model_k3", "model_k4"))
-        )
-      }
-      
-      
-      fullmodelr <- mxRun(fullmodel, silent = !verbose, suppressWarnings = TRUE)
       
       # compute class proportions:
       class_proportions <- colMeans(post)
       
       ## E-step
-      # computing casewise log likelihoods in all models and total loglik
-      fitfunctions_k1 <- paste0(modelnames_k1, ".fitfunction")
-      fitfunctions_k2 <- paste0(modelnames_k2, ".fitfunction")
+      # computing casewise log likelihoods in all models
+      fitfunctions <- paste0(modelnames, ".fitfunction")
+      m2_loglik_k1 <- purrr::map_dbl(fitfunctions, mxEvalByName, model=model_k1r)
+      m2_loglik_k2 <- purrr::map_dbl(fitfunctions, mxEvalByName, model=model_k2r)
       if(n_clusters == 4){
-        fitfunctions_k3 <- paste0(modelnames_k3, ".fitfunction")
-        fitfunctions_k4 <- paste0(modelnames_k4, ".fitfunction")
-      }
-      # obtain the minus-2 log likelihoods from the OpenMx output
-      m2_loglik_k1 <- purrr::map_dbl(fitfunctions_k1, mxEvalByName, model=fullmodelr)
-      m2_loglik_k2 <- purrr::map_dbl(fitfunctions_k2, mxEvalByName, model=fullmodelr)
-      if(n_clusters == 4){
-        m2_loglik_k3 <- purrr::map_dbl(fitfunctions_k3, mxEvalByName, model=fullmodelr)
-        m2_loglik_k4 <- purrr::map_dbl(fitfunctions_k4, mxEvalByName, model=fullmodelr)
+        m2_loglik_k3 <- purrr::map_dbl(fitfunctions, mxEvalByName, model=model_k3r)
+        m2_loglik_k4 <- purrr::map_dbl(fitfunctions, mxEvalByName, model=model_k4r)
       }
       # combine them into a matrix with n rows and k columns
       if(n_clusters == 2){
@@ -371,20 +337,24 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       # transform on log likelihood scale:
       casewise.loglik <- casewise.m2_loglik/(-2)
       
-      # compute total log likelihood
-      total_loglik = sum(casewise.loglik*post)
+      # compute complete-data log likelihood
+      complete_data_loglik <-  sum(post*log(class_proportions)-post*casewise.loglik)
+      
+      # compute observed-data log likelihood
+      observed_data_loglik <- sum(log(rowSums(class_proportions*exp(casewise.loglik))))
+      
       
       
       if(verbose){
         if(it != 1){
-          print(paste0("Iteration: ", it, ". Log Likelihood: ", round(total_loglik, 4), ". Change: ", round(total_loglik - loglik0, 6), "."))
+          print(paste0("Iteration: ", it, ". Log Likelihood: ", round(observed_data_loglik, 4), ". Change: ", round(observed_data_loglik - observed_data_loglik0, 6), "."))
         } else {
-          print(paste0("Iteration: ", it, ". Log Likelihood: ", round(total_loglik, 4), "."))
+          print(paste0("Iteration: ", it, ". Log Likelihood: ", round(observed_data_loglik, 4), "."))
         }
         
       }
       # check convergence:
-      if(it>1 && (total_loglik - loglik0)<1.0e-6){
+      if(it>1 && (observed_data_loglik - observed_data_loglik0)<1.0e-6){
         if(verbose){
           print("Convergence achieved.")
         }

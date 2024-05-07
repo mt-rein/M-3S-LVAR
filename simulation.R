@@ -23,7 +23,7 @@ library(parallel)
 # load functions
 source("step1.R")
 source("step2.R")
-source("step3_OpenMx.R")
+source("step3_OpenMx_v1.R")
 source("do_sim.R")
 source("auxiliary_functions.R")
 
