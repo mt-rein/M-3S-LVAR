@@ -337,12 +337,13 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   #### 5) extract estimates ####
   ## TO DO: make this more flexible 
   estimates <- lapply(best_models, coef)
-  names(estimates) <- paste0("cluster", 1:n_clusters)
-  
   loglik <- best_loglik
   post <- best_post
+  names(estimates) <- colnames(post) <- paste0("cluster", 1:n_clusters)
   assignment <- round(post)
   class_proportions <- colMeans(post)
+  
+  
   
   clustering <- list("class_proportions" = class_proportions,
                      "posterior_prob" = post,

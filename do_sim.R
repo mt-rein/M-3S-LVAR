@@ -13,23 +13,23 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   # get condition levels and set seed:
   n <- 48
   obs <- 50
-  n_k = 2
+  n_k = 4
   k_size =  "balanced" |> as.character()
   rho_gen =  "large" |> as.character()
   similarity =  "dissimilar" |> as.character()
   innovars =  "equal" |> as.character()
   
-
-  replication <- cond$replication[pos]
-  iteration <- cond$iteration[pos]
-  # get condition levels and set seed:
-  n <- cond$n[pos]
-  obs <- cond$obs[pos]
-  n_k = cond$n_k[pos]
-  k_size =  cond$k_size[pos] |> as.character()
-  rho_gen =  cond$rho_gen[pos] |> as.character()
-  similarity =  cond$similarity[pos] |> as.character()
-  innovars =  cond$innovars[pos] |> as.character()
+  
+  # replication <- cond$replication[pos]
+  # iteration <- cond$iteration[pos]
+  # # get condition levels and set seed:
+  # n <- cond$n[pos]
+  # obs <- cond$obs[pos]
+  # n_k = cond$n_k[pos]
+  # k_size =  cond$k_size[pos] |> as.character()
+  # rho_gen =  cond$rho_gen[pos] |> as.character()
+  # similarity =  cond$similarity[pos] |> as.character()
+  # innovars =  cond$innovars[pos] |> as.character()
   seed_cond <- cond$seed[pos]
   set.seed(seed_cond)
   
@@ -175,16 +175,16 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     # get correct phi matrix:
     if(k == 1){
       phimat <- phimat_k1
-      }
+    }
     if(k == 2){
       phimat <- phimat_k2
-      }
+    }
     if(k == 3){
       phimat <- phimat_k3
-      }
+    }
     if(k == 4){
       phimat <- phimat_k4
-      }
+    }
     
     # set innovation variance matrix:
     if(innovars == "equal"){
@@ -192,7 +192,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
       zeta1_i <- zeta1_pop
       zeta2_i <- zeta2_pop
       zeta12_i <- zeta12_pop
-      }
+    }
     if(innovars == "random"){
       # otherwise, create person specific innovation (co)variance matrix:
       zeta1_i <- rtruncnorm(1, a = zeta1_pop - .5, b = zeta1_pop + .5,
@@ -201,7 +201,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
                             mean = zeta2_pop, sd = .5)
       zeta12_i <- rtruncnorm(1, a = zeta12_pop - .5, b = zeta12_pop + .5,
                              mean = zeta12_pop, sd = .5)
-      }
+    }
     zetamat <- matrix(c(zeta1_i, zeta12_i, zeta12_i, zeta2_i), ncol = 2)
     
     mu_i <- c(rnorm(1, mean = grandmeans[1], sd = 2),                           # person specific mean on variable 1
@@ -312,36 +312,36 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   output_step1 <- run_step1(data = data, measurementmodel = model_step1, id = "id")
   # extract error/warning messages (if applicable):
   step1_warning <- ifelse(is_empty(output_step1$warnings),
-                               FALSE, TRUE)
+                          FALSE, TRUE)
   step1_warning_text <- ifelse(is_empty(output_step1$warnings),
-                                    "",
-                                    paste(c(output_step1$warnings),
-                                          collapse = "; ")
+                               "",
+                               paste(c(output_step1$warnings),
+                                     collapse = "; ")
   )
   step1_error <- ifelse(is_empty(output_step1$result$error),
-                             FALSE, TRUE)
+                        FALSE, TRUE)
   step1_error_text <- ifelse(is_empty(output_step1$result$error),
-                                  "",
-                                  paste(c(output_step1$result$error),
-                                        collapse = "; "))
-
+                             "",
+                             paste(c(output_step1$result$error),
+                                   collapse = "; "))
+  
   #### Step 2 ####
   if(!step1_error){                                                             # only proceed if there is no error in step 1
     output_step2 <- run_step2(step1output = output_step1$result$result)
     # extract error/warning messages (if applicable):
     step2_warning <- ifelse(is_empty(output_step2$warnings),
-                                 FALSE, TRUE)
+                            FALSE, TRUE)
     step2_warning_text <- ifelse(is_empty(output_step2$warnings),
-                                      "",
-                                      paste(c(output_step2$warnings),
-                                            collapse = "; ")
+                                 "",
+                                 paste(c(output_step2$warnings),
+                                       collapse = "; ")
     )
     step2_error <- ifelse(is_empty(output_step2$result$error),
-                               FALSE, TRUE)
+                          FALSE, TRUE)
     step2_error_text <- ifelse(is_empty(output_step2$result$error),
-                                    "",
-                                    paste(c(output_step2$result$error),
-                                          collapse = "; ")
+                               "",
+                               paste(c(output_step2$result$error),
+                                     collapse = "; ")
     )
   } else {
     step2_warning <- FALSE
@@ -354,7 +354,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   if(!step1_error & !step2_error){                                              # only proceed if there is no error in step 1 as well as step 2
     output_step3 <- run_step3(step2output = output_step2$result$result,
                               n_clusters = n_k,
-                              nstarts = 1, maxit = 100,
+                              nstarts = 5, maxit = 100,
                               structuralmodel = NULL,
                               verbose = FALSE)
     
@@ -372,60 +372,117 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
                                "",
                                paste(c(output_step3$result$error),
                                      collapse = "; ")
-                               )
-    } else {
+    )
+  } else {
     step3_warning <- FALSE
     step3_warning_text <- "step1 or step2 not successful"
     step3_error <- FALSE
     step3_error_text <- "step1 or step2 not successful"
-    }
+  }
   
   if(!step1_error & !step2_error & !step3_error){
     final_output <- output_step3$result$result
     duration = final_output$other$duration |> as.numeric()
     nonconvergences = final_output$other$nonconvergences
     
-    # estimates in cluster 1:
-    phi11_k1 <- final_output$estimates$estimates_k1["phi11_k1"] |> as.numeric()
-    phi12_k1 <- final_output$estimates$estimates_k1["phi12_k1"] |> as.numeric()
-    phi21_k1 <- final_output$estimates$estimates_k1["phi21_k1"] |> as.numeric()
-    phi22_k1 <- final_output$estimates$estimates_k1["phi22_k1"] |> as.numeric()
+    ## adjust potential label switching:
+    # create two labeled lists of matrices (estimated and true)
+    estimated <- lapply(final_output$estimates, function(x) matrix(x[1:4], nrow = 2))
+    if(n_k == 2){
+      true <- list("cluster1" = phimat_k1,
+                   "cluster2" = phimat_k2)
+    }
+    if(n_k == 4){
+      true <- list("cluster1" = phimat_k1,
+                   "cluster2" = phimat_k2,
+                   "cluster3" = phimat_k3,
+                   "cluster4" = phimat_k4)
+    }
     
-    zeta1_k1 <- final_output$estimates$estimates_k1["zeta1"] |> as.numeric()
-    zeta2_k1 <- final_output$estimates$estimates_k1["zeta2"] |> as.numeric()
-    zeta12_k1 <- final_output$estimates$estimates_k1["zeta12"] |> as.numeric()
+    # create a dataframe with permutations of labels for the estimated matrices
+    combinations <- RcppAlgos::permuteGeneral(paste0("cluster", 1:n_k)) |> as.data.frame()
+    combinations$distance <- NA
+    
+    # function to compute euclidean distance between any estimated and true matrix
+    euclidean_distance <- function(index, list1, list2){
+      sqrt(sum((list1[[index]] - list2[[index]])^2))
+    }
+    
+    # iterate over the permutations of labels, change the labels of the estimated
+    # matrices accordingly, then compute and save corresponding total euclidean distance
+    for(i in 1:nrow(combinations)){
+      names(estimated) <- combinations[i, 1:n_k]
+      combinations$distance[i] <- sqrt(sum((purrr::map_dbl(names(estimated), euclidean_distance, estimated, true)))^2)
+    }
+    
+    
+    # choose the label with the smallest sum of euclidean distance:
+     newlabels <- combinations[which.min(combinations$distance), 1:n_k]
+    
+    # swap the labels accordingly in the output of step 3:
+    names(final_output$estimates) <- colnames(final_output$clustering$posterior_prob) <- names(final_output$clustering$class_proportions) <- colnames(final_output$clustering$assignment) <- newlabels
+    
+    # euclidean_distance <- function(x, y) {
+    #   sqrt(sum((x - y)^2))
+    # }
+    # pairings <- data.frame("estimated" = numeric(),
+    #                        "closest_true" = numeric())
+    # 
+    # for(i in 1:length(estimated)){
+    #   distances <- data.frame("estimated" = numeric(),
+    #                          "true" = numeric(),
+    #                          "distance" = numeric())
+    #   for(j in 1:length(true)){
+    #     distance <- sqrt(sum((estimated[[i]] - true[[j]])^2))
+    #     distances[j, ] <- c(names(estimated)[i], names(true)[j], distance)
+    #   }
+    #   pairings[i, ] <- c(names(estimated)[i], distances$true[which.min(distances$distance)])
+    # }
+    # names(final_output$estimates) <- names(final_output$estimates)[match(names(final_output$estimates), pairings$closest_true)]
+    # 
+    
+    ## extract estimates
+    # estimates in cluster 1:
+    phi11_k1 <- final_output$estimates$cluster1["phi11"] |> as.numeric()
+    phi12_k1 <- final_output$estimates$cluster1["phi12"] |> as.numeric()
+    phi21_k1 <- final_output$estimates$cluster1["phi21"] |> as.numeric()
+    phi22_k1 <- final_output$estimates$cluster1["phi22"] |> as.numeric()
+    
+    zeta1_k1 <- final_output$estimates$cluster1["zeta1"] |> as.numeric()
+    zeta2_k1 <- final_output$estimates$cluster1["zeta2"] |> as.numeric()
+    zeta12_k1 <- final_output$estimates$cluster1["zeta12"] |> as.numeric()
     
     # estimates in cluster 2:
-    phi11_k2 <- final_output$estimates$estimates_k2["phi11_k2"] |> as.numeric()
-    phi12_k2 <- final_output$estimates$estimates_k2["phi12_k2"] |> as.numeric()
-    phi21_k2 <- final_output$estimates$estimates_k2["phi21_k2"] |> as.numeric()
-    phi22_k2 <- final_output$estimates$estimates_k2["phi22_k2"] |> as.numeric()
+    phi11_k2 <- final_output$estimates$cluster2["phi11"] |> as.numeric()
+    phi12_k2 <- final_output$estimates$cluster2["phi12"] |> as.numeric()
+    phi21_k2 <- final_output$estimates$cluster2["phi21"] |> as.numeric()
+    phi22_k2 <- final_output$estimates$cluster2["phi22"] |> as.numeric()
     
-    zeta1_k2 <- final_output$estimates$estimates_k2["zeta1"] |> as.numeric()
-    zeta2_k2 <- final_output$estimates$estimates_k2["zeta2"] |> as.numeric()
-    zeta12_k2 <- final_output$estimates$estimates_k2["zeta12"] |> as.numeric()
+    zeta1_k2 <- final_output$estimates$cluster2["zeta1"] |> as.numeric()
+    zeta2_k2 <- final_output$estimates$cluster2["zeta2"] |> as.numeric()
+    zeta12_k2 <- final_output$estimates$cluster2["zeta12"] |> as.numeric()
     
     # estimates in cluster 3 and 4 (if applicable)
     if(n_k == 4){
       # estimates in cluster 3:
-      phi11_k3 <- final_output$estimates$estimates_k3["phi11_k3"] |> as.numeric()
-      phi12_k3 <- final_output$estimates$estimates_k3["phi12_k3"] |> as.numeric()
-      phi21_k3 <- final_output$estimates$estimates_k3["phi21_k3"] |> as.numeric()
-      phi22_k3 <- final_output$estimates$estimates_k3["phi22_k3"] |> as.numeric()
+      phi11_k3 <- final_output$estimates$cluster3["phi11"] |> as.numeric()
+      phi12_k3 <- final_output$estimates$cluster3["phi12"] |> as.numeric()
+      phi21_k3 <- final_output$estimates$cluster3["phi21"] |> as.numeric()
+      phi22_k3 <- final_output$estimates$cluster3["phi22"] |> as.numeric()
       
-      zeta1_k3 <- final_output$estimates$estimates_k3["zeta1"] |> as.numeric()
-      zeta2_k3 <- final_output$estimates$estimates_k3["zeta2"] |> as.numeric()
-      zeta12_k3 <- final_output$estimates$estimates_k3["zeta12"] |> as.numeric()
+      zeta1_k3 <- final_output$estimates$cluster3["zeta1"] |> as.numeric()
+      zeta2_k3 <- final_output$estimates$cluster3["zeta2"] |> as.numeric()
+      zeta12_k3 <- final_output$estimates$cluster3["zeta12"] |> as.numeric()
       
       # estimates in cluster 4:
-      phi11_k4 <- final_output$estimates$estimates_k4["phi11_k4"] |> as.numeric()
-      phi12_k4 <- final_output$estimates$estimates_k4["phi12_k4"] |> as.numeric()
-      phi21_k4 <- final_output$estimates$estimates_k4["phi21_k4"] |> as.numeric()
-      phi22_k4 <- final_output$estimates$estimates_k4["phi22_k4"] |> as.numeric()
+      phi11_k4 <- final_output$estimates$cluster4["phi11"] |> as.numeric()
+      phi12_k4 <- final_output$estimates$cluster4["phi12"] |> as.numeric()
+      phi21_k4 <- final_output$estimates$cluster4["phi21"] |> as.numeric()
+      phi22_k4 <- final_output$estimates$cluster4["phi22"] |> as.numeric()
       
-      zeta1_k4 <- final_output$estimates$estimates_k4["zeta1"] |> as.numeric()
-      zeta2_k4 <- final_output$estimates$estimates_k4["zeta2"] |> as.numeric()
-      zeta12_k4 <- final_output$estimates$estimates_k4["zeta12"] |> as.numeric()
+      zeta1_k4 <- final_output$estimates$cluster4["zeta1"] |> as.numeric()
+      zeta2_k4 <- final_output$estimates$cluster4["zeta2"] |> as.numeric()
+      zeta12_k4 <- final_output$estimates$cluster4["zeta12"] |> as.numeric()
       
       
     } else {
@@ -448,12 +505,12 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
       zeta2_k4 <- NA
       zeta12_k4 <- NA
     }
-
+    
     # ARI:
     clusterassignment_estimated <- apply(final_output$clustering$assignment, 1, function(row) {
-      class_index <- which(row == 1)
+      class_index <- colnames(final_output$clustering$assignment)[which(row == 1)]
     })
-    ARI <- arandi(clusterassignment, clusterassignment_estimated, adjust = TRUE)
+    ARI <- mcclust::arandi(clusterassignment, clusterassignment_estimated, adjust = TRUE)
   } else {
     duration = NA
     nonconvergences = NA
@@ -499,7 +556,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   output <- c("iteration" = iteration, "replication" = replication,
               "n" = n, "obs" = obs, "n_k" = n_k, "k_size" = k_size, "rho_gen" = rho_gen, 
               "similarity" = similarity, "innovars" = innovars,
-              "duration" = duration,
+              "duration" = duration, "nonconvergences" = nonconvergences, "ARI" = ARI,
               "phi11_k1_pop" = phi11_k1_pop, "phi12_k1_pop" = phi12_k1_pop, "phi21_k1_pop" = phi21_k1_pop, "phi22_k1_pop" = phi22_k1_pop,
               "phi11_k2_pop" = phi11_k2_pop, "phi12_k2_pop" = phi12_k2_pop, "phi21_k2_pop" = phi21_k2_pop, "phi22_k2_pop" = phi22_k2_pop,
               "phi11_k3_pop" = phi11_k3_pop, "phi12_k3_pop" = phi12_k3_pop, "phi21_k3_pop" = phi21_k3_pop, "phi22_k3_pop" = phi22_k3_pop,
@@ -541,4 +598,4 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   }
   
   return(output)
-  }
+}
