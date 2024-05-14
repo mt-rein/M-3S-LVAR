@@ -3,23 +3,21 @@
 # step2output <- output
 # structuralmodel = NULL
 
-step3 <- function(step2output, structuralmodel = NULL, n_clusters,
-                         nstarts = 20, maxit = 100, verbose = FALSE){
+step3 <- function(step2output, n_clusters,
+                  n_starts = 20, maxit = 100, verbose = FALSE){
   # step2output:
   #   the object that was generated using the step2() function
-  # structuralmodel (optional):
-  #   a string describing the measurement model using the lavaan syntax.
-  #   If omitted, a VAR model with all auto- and cross-regressive parameters
-  #   will be specified by default.
+  # ...
   
   
   #### FOR TESTING ####
-  # step2output = output_step2$result$result
-  # n_clusters = n_k
-  # nstarts = 3
-  # maxit = 100
-  # structuralmodel = NULL
-  # verbose = TRUE
+  step2output = output_step2$result$result
+  n_clusters = n_k
+  n_starts = 5
+  #all_starts <- vector(mode = "list", length = n_starts)
+  maxit = 100
+  structuralmodel = NULL
+  verbose = TRUE
   
   #### 1) Preparations ####
   ## extract objects from step 1 output:
@@ -34,6 +32,13 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   id <- lavaan::lavInspect(fit_step1, "cluster")                                # name of the variable that served as cluster variable in step1
   unique_ids <- unique(data[, id])                                              # vector of unique ids
   n <- length(unique_ids)                                                       # number of individuals
+  
+  # save previous options of OpenMx, then set new ones:
+  mx_Hessian <- mxOption(key = "Calculate Hessian")
+  mx_SE <- mxOption(key = "Standard Errors")
+  mx_maxiterations <- mxOption(key = "Major Iterations")
+  mxOption(key = "Calculate Hessian", value = "No")
+  mxOption(key = "Standard Errors", value = "No")
   
   
   #### 2) data manipulation ####
@@ -184,11 +189,14 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
   # maximum number of iterations:
   #set.seed(8389493)#!!!! work on the whole replicability thing!!!!
   # provide seeds for the multiple starts (for replicability)
-  seeds <- sample(1:100000000, nstarts)
+  seeds <- sample(1:100000000, n_starts)
   nonconvergences <- 0
   estimation_start <- Sys.time()
   # loop across the random starts
-  for(i in 1:nstarts){
+  for(i in 1:n_starts){
+    # reset max iterations in OpenMx to 3 and close_convergence check to FALSE
+    mxOption(key = "Major iterations", value = 3)
+    close_convergence <- FALSE
     # set seed:
     set.seed(seeds[i])
     # create random cluster assignment to start:
@@ -223,13 +231,25 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       weights = post[, 1]
       weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
       model_k1 <- mxModel('model_k1', model_list_k1, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
-      model_k1r <- mxRun(model_k1, silent = !verbose, suppressWarnings = TRUE)
+      if(it == 1){
+        model_k1r <- mxRun(model_k1, silent = !verbose, suppressWarnings = TRUE)
+      }
+      if(it > 1){
+        model_k1 <- omxSetParameters(model_k1, labels = names(coef(model_k1r)), values = coef(model_k1r))
+        model_k1r <- mxRun(model_k1, silent = !verbose, suppressWarnings = TRUE)
+      }
       
       # create the mxModel for cluster 2:
       weights = post[, 2]
       weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
       model_k2 <- mxModel('model_k2', model_list_k2, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
-      model_k2r <- mxRun(model_k2, silent = !verbose, suppressWarnings = TRUE)
+      if(it == 1){
+        model_k2r <- mxRun(model_k2, silent = !verbose, suppressWarnings = TRUE)
+      }
+      if(it > 1){
+        model_k2 <- omxSetParameters(model_k2, labels = names(coef(model_k2r)), values = coef(model_k2r))
+        model_k2r <- mxRun(model_k2, silent = !verbose, suppressWarnings = TRUE)
+      }
       
       # create models for clusters 3 and 4 (if applicable):
       if(n_clusters == 4){
@@ -237,13 +257,25 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
         weights = post[, 3]
         weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
         model_k3 <- mxModel('model_k3', model_list_k3, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
-        model_k3r <- mxRun(model_k3, silent = !verbose, suppressWarnings = TRUE)
+        if(it == 1){
+          model_k3r <- mxRun(model_k3, silent = !verbose, suppressWarnings = TRUE)
+        }
+        if(it > 1){
+          model_k3 <- omxSetParameters(model_k3, labels = names(coef(model_k3r)), values = coef(model_k3r))
+          model_k3r <- mxRun(model_k3, silent = !verbose, suppressWarnings = TRUE)
+        }
         
         # create the mxModel for cluster 4:
         weights = post[, 4]
         weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
         model_k4 <- mxModel('model_k4', model_list_k4, mxAlgebraFromString(weighted_objectives, name = "weightedfit"), mxFitFunctionAlgebra("weightedfit"))
-        model_k4r <- mxRun(model_k4, silent = !verbose, suppressWarnings = TRUE)
+        if(it == 1){
+          model_k4r <- mxRun(model_k4, silent = !verbose, suppressWarnings = TRUE)
+        }
+        if(it > 1){
+          model_k4 <- omxSetParameters(model_k4, labels = names(coef(model_k4r)), values = coef(model_k4r))
+          model_k4r <- mxRun(model_k4, silent = !verbose, suppressWarnings = TRUE)
+        }
       }
       
       ## update LL:
@@ -266,7 +298,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       
       
       # compute complete-data log likelihood
-      complete_data_loglik <-  sum(post*log(class_proportions)-post*casewise.loglik)
+      # complete_data_loglik <-  sum(post*log(class_proportions)-post*casewise.loglik)
       
       # compute observed-data log likelihood
       observed_data_loglik <- sum(log(rowSums(class_proportions*exp(casewise.loglik))))
@@ -282,7 +314,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
       
       
       # check convergence:
-      if(it>1 && (observed_data_loglik - observed_data_loglik0)<1.0e-6){
+      if(it>3 && (observed_data_loglik - observed_data_loglik0)<1.0e-6){
         if(verbose){
           print("Convergence achieved.")
         }
@@ -294,6 +326,13 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
         }
         
         break
+      }
+      
+      # check close convergence to increase number of iterations in OpenMx:
+      if(it > 5 && (observed_data_loglik - observed_data_loglik0) < .5 && !close_convergence){
+        mxOption(key = "Major iterations", value = mx_maxiterations)
+        close_convergence <- TRUE
+        print("Close convergence.")
       }
       
       observed_data_loglik0 = observed_data_loglik
@@ -326,7 +365,7 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
     }
     
     if(verbose){
-      print(paste("Start", i, "out of", nstarts, "completed."))
+      print(paste("Start", i, "out of", n_starts, "completed."))
     }
   }
   duration <- difftime(Sys.time(), estimation_start, unit = "s")
@@ -360,6 +399,11 @@ step3 <- function(step2output, structuralmodel = NULL, n_clusters,
                  "estimates" = estimates,
                  "clustering" = clustering,
                  "other" = other)
+  
+  ## reset the changed OpenMx Options:
+  mxOption(key = "Calculate Hessian") <- mx_Hessian
+  mxOption(key = "Standard Errors") <- mx_SE
+  mxOption(key = "Major Iterations") <- mx_maxiterations
   
   return(output)
 }
