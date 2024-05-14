@@ -480,6 +480,9 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
                                            colnames(final_output$clustering$assignment)[which(row == 1)]
                                          })
     ARI <- mcclust::arandi(clusterassignment_true, clusterassignment_estimated, adjust = TRUE)
+    
+    # local maximum:
+    local_max <- abs(final_output$other$proxy_maximum - final_output$other$loglik) > .001
   } else {
     duration = NA
     nonconvergences = NA
@@ -520,12 +523,13 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     zeta12_k4 <- NA
     
     ARI <- NA
+    local_max <- NA
   }
   
   output <- c("iteration" = iteration, "replication" = replication,
               "n" = n, "obs" = obs, "n_k" = n_k, "k_size" = k_size, "rho_gen" = rho_gen, 
               "similarity" = similarity, "innovars" = innovars,
-              "duration" = duration, "nonconvergences" = nonconvergences, "ARI" = ARI,
+              "duration" = duration, "nonconvergences" = nonconvergences, "ARI" = ARI, "local_max" = local_max,
               "phi11_k1_pop" = phi11_k1_pop, "phi12_k1_pop" = phi12_k1_pop, "phi21_k1_pop" = phi21_k1_pop, "phi22_k1_pop" = phi22_k1_pop,
               "phi11_k2_pop" = phi11_k2_pop, "phi12_k2_pop" = phi12_k2_pop, "phi21_k2_pop" = phi21_k2_pop, "phi22_k2_pop" = phi22_k2_pop,
               "phi11_k3_pop" = phi11_k3_pop, "phi12_k3_pop" = phi12_k3_pop, "phi21_k3_pop" = phi21_k3_pop, "phi22_k3_pop" = phi22_k3_pop,
