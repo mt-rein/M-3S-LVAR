@@ -149,27 +149,27 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   if(n_k == 2){
     # for balanced distribution:
     if(k_size == "balanced"){
-      clusterassignment <- c(rep(1, n*0.5), rep(2, n*0.5))
+      clusterassignment_true <- c(rep(1, n*0.5), rep(2, n*0.5))
     }
     # for unbalanced distribution
     if(k_size == "unbalanced"){
-      clusterassignment <- c(rep(1, n*0.75), rep(2, n*0.25))
+      clusterassignment_true <- c(rep(1, n*0.75), rep(2, n*0.25))
     }
   }
   if(n_k == 4){
     # for balanced distribution:
     if(k_size == "balanced"){
-      clusterassignment <- c(rep(1, n*0.25), rep(2, n*0.25), rep(3, n*0.25), rep(4, n*0.25))
+      clusterassignment_true <- c(rep(1, n*0.25), rep(2, n*0.25), rep(3, n*0.25), rep(4, n*0.25))
     }
     # for unbalanced distribution
     if(k_size == "unbalanced"){
-      clusterassignment <- c(rep(1, n*0.75), rep(2, n*0.25/3), rep(3, n*0.25/3), rep(4, n*0.25/3))
+      clusterassignment_true <- c(rep(1, n*0.75), rep(2, n*0.25/3), rep(3, n*0.25/3), rep(4, n*0.25/3))
     }
   }
   
   for(i in 1:n){
     # create temporary dataframe:
-    k <- clusterassignment[i]
+    k <- clusterassignment_true[i]
     
     ## create (partly person-specific) data-generating parameter values from population values
     # get correct phi matrix:
@@ -235,15 +235,15 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     psi_k4 <- solve(diag(2*2) - kronecker(phimat_k4, phimat_k4)) %*% c(zetamat) |> matrix(nrow = 2)
   }
   
-  n_k1 <- sum(clusterassignment == 1)
-  n_k2 <- sum(clusterassignment == 2)
+  n_k1 <- sum(clusterassignment_true == 1)
+  n_k2 <- sum(clusterassignment_true == 2)
   
   if(n_k == 2){
     psi_pop <- (psi_k1*(n_k1-1) + psi_k2*n_k2)/(n_k1 + n_k2 - 2)
   }
   if(n_k == 4){
-    n_k3 <- sum(clusterassignment == 3)
-    n_k4 <- sum(clusterassignment == 4)
+    n_k3 <- sum(clusterassignment_true == 3)
+    n_k4 <- sum(clusterassignment_true == 4)
     psi_pop <- (psi_k1 + psi_k2 + psi_k3 + psi_k4)/(n_k1 + n_k2 + n_k3 + n_k4 - 4)
   }
   
@@ -354,8 +354,9 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   if(!step1_error & !step2_error){                                              # only proceed if there is no error in step 1 as well as step 2
     output_step3 <- run_step3(step2output = output_step2$result$result,
                               n_clusters = n_k,
-                              nstarts = 5, maxit = 100,
-                              structuralmodel = NULL,
+                              n_starts = 25, n_best_starts = 5,
+                              maxit = 100,
+                              true_clusters = clusterassignment_true, 
                               verbose = FALSE)
     
     # extract error/warning messages (if applicable):
@@ -386,60 +387,27 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     nonconvergences = final_output$other$nonconvergences
     
     ## adjust potential label switching:
-    # create two labeled lists of matrices (estimated and true)
-    estimated <- lapply(final_output$estimates, function(x) matrix(x[1:4], nrow = 2))
-    if(n_k == 2){
-      true <- list("cluster1" = phimat_k1,
-                   "cluster2" = phimat_k2)
-    }
-    if(n_k == 4){
-      true <- list("cluster1" = phimat_k1,
-                   "cluster2" = phimat_k2,
-                   "cluster3" = phimat_k3,
-                   "cluster4" = phimat_k4)
-    }
-    
-    # create a dataframe with permutations of labels for the estimated matrices
     combinations <- RcppAlgos::permuteGeneral(paste0("cluster", 1:n_k)) |> as.data.frame()
-    combinations$distance <- NA
+    combinations$diagsum <- 0
     
-    # function to compute euclidean distance between any estimated and true matrix
-    euclidean_distance <- function(index, list1, list2){
-      sqrt(sum((list1[[index]] - list2[[index]])^2))
-    }
-    
-    # iterate over the permutations of labels, change the labels of the estimated
-    # matrices accordingly, then compute and save corresponding total euclidean distance
     for(i in 1:nrow(combinations)){
-      names(estimated) <- combinations[i, 1:n_k]
-      combinations$distance[i] <- sqrt(sum((purrr::map_dbl(names(estimated), euclidean_distance, estimated, true)))^2)
+      # relabel the clusters:
+      colnames(final_output$clustering$assignment) <- combinations[i, 1:n_k]
+      # create a vector that indicates the assigned cluster for each individual (instead of a matrix):
+      clusterassignment_estimated <- apply(final_output$clustering$assignment, 1, 
+                                           function(row) {
+                                             colnames(final_output$clustering$assignment)[which(row == 1)]
+                                           })
+      # creates a cross table of estimated and true cluster assignments:
+      crosstable <- table(clusterassignment_estimated, clusterassignment_true)
+      # compute the sum of the diagonal of the cross table and save it
+      combinations$diagsum[i] <- sum(diag(crosstable))                          
     }
-    
-    
-    # choose the label with the smallest sum of euclidean distance:
-     newlabels <- combinations[which.min(combinations$distance), 1:n_k]
+    # choose the label with the largest sum of the diagonal:
+    newlabels <- combinations[which.max(combinations$diagsum), 1:n_k]
     
     # swap the labels accordingly in the output of step 3:
     names(final_output$estimates) <- colnames(final_output$clustering$posterior_prob) <- names(final_output$clustering$class_proportions) <- colnames(final_output$clustering$assignment) <- newlabels
-    
-    # euclidean_distance <- function(x, y) {
-    #   sqrt(sum((x - y)^2))
-    # }
-    # pairings <- data.frame("estimated" = numeric(),
-    #                        "closest_true" = numeric())
-    # 
-    # for(i in 1:length(estimated)){
-    #   distances <- data.frame("estimated" = numeric(),
-    #                          "true" = numeric(),
-    #                          "distance" = numeric())
-    #   for(j in 1:length(true)){
-    #     distance <- sqrt(sum((estimated[[i]] - true[[j]])^2))
-    #     distances[j, ] <- c(names(estimated)[i], names(true)[j], distance)
-    #   }
-    #   pairings[i, ] <- c(names(estimated)[i], distances$true[which.min(distances$distance)])
-    # }
-    # names(final_output$estimates) <- names(final_output$estimates)[match(names(final_output$estimates), pairings$closest_true)]
-    # 
     
     ## extract estimates
     # estimates in cluster 1:
@@ -507,10 +475,11 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     }
     
     # ARI:
-    clusterassignment_estimated <- apply(final_output$clustering$assignment, 1, function(row) {
-      class_index <- colnames(final_output$clustering$assignment)[which(row == 1)]
-    })
-    ARI <- mcclust::arandi(clusterassignment, clusterassignment_estimated, adjust = TRUE)
+    clusterassignment_estimated <- apply(final_output$clustering$assignment, 1, 
+                                         function(row) {
+                                           colnames(final_output$clustering$assignment)[which(row == 1)]
+                                         })
+    ARI <- mcclust::arandi(clusterassignment_true, clusterassignment_estimated, adjust = TRUE)
   } else {
     duration = NA
     nonconvergences = NA
