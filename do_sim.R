@@ -7,29 +7,29 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   # verbose = if TRUE, prints a message after the iteration is finished
   
   #### for testing:
-  pos = 1
-  replication <- 1
-  iteration <- 1
-  # get condition levels and set seed:
-  n <- 48
-  obs <- 50
-  n_k = 4
-  k_size =  "balanced" |> as.character()
-  rho_gen =  "large" |> as.character()
-  similarity =  "dissimilar" |> as.character()
-  innovars =  "equal" |> as.character()
-  
-  
-  # replication <- cond$replication[pos]
-  # iteration <- cond$iteration[pos]
+  # pos = 1
+  # replication <- 1
+  # iteration <- 1
   # # get condition levels and set seed:
-  # n <- cond$n[pos]
-  # obs <- cond$obs[pos]
-  # n_k = cond$n_k[pos]
-  # k_size =  cond$k_size[pos] |> as.character()
-  # rho_gen =  cond$rho_gen[pos] |> as.character()
-  # similarity =  cond$similarity[pos] |> as.character()
-  # innovars =  cond$innovars[pos] |> as.character()
+  # n <- 48
+  # obs <- 50
+  # n_k = 2
+  # k_size =  "balanced" |> as.character()
+  # rho_gen =  "large" |> as.character()
+  # similarity =  "dissimilar" |> as.character()
+  # innovars =  "equal" |> as.character()
+  
+  
+  replication <- cond$replication[pos]
+  iteration <- cond$iteration[pos]
+  # get condition levels and set seed:
+  n <- cond$n[pos]
+  obs <- cond$obs[pos]
+  n_k = cond$n_k[pos]
+  k_size =  cond$k_size[pos] |> as.character()
+  rho_gen =  cond$rho_gen[pos] |> as.character()
+  similarity =  cond$similarity[pos] |> as.character()
+  innovars =  cond$innovars[pos] |> as.character()
   seed_cond <- cond$seed[pos]
   set.seed(seed_cond)
   
@@ -549,7 +549,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
               "step1_warning_text" = step1_warning_text, "step2_warning_text" = step2_warning_text, "step3_warning_text" = step3_warning_text,
               "step1_error_text" = step1_error_text, "step2_error_text" = step2_error_text, "step3_error_text" = step3_error_text)
   
-  for(i in 66:71){
+  for(i in 69:74){
     output[i] <- str_squish(output[i])                                          # removes all whitespace and linebreaks from the error and warning strings
     output[i] <- gsub(",", "", output[i])                                       # removes all commata from error and warning strings (to prevent messing up the CSV file)
   }

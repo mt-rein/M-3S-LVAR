@@ -17,7 +17,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   # n_starts = 25
   # n_best_starts = 5
   # maxit = 100
-  # true_clusters = clusterassignment
+  # true_clusters = clusterassignment_true
   # verbose = TRUE
   
   #### 1) Preparations ####
@@ -249,9 +249,8 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                                             name = "weightedfit"), 
                         mxFitFunctionAlgebra("weightedfit"))
     # generate random starting values: 
-    model_k1 <- omxSetParameters(model_k1, 
-                                 labels = c("phi11", "phi21", "phi12", "phi22"), 
-                                 values = runif(4, -.3, .3))
+    model_k1 <- generate_startval(model_k1)
+      
     # run the model:
     model_k1r <- mxRun(model_k1, silent = !verbose, suppressWarnings = TRUE)
     
@@ -262,9 +261,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                         mxAlgebraFromString(weighted_objectives, 
                                             name = "weightedfit"), 
                         mxFitFunctionAlgebra("weightedfit"))
-    model_k2 <- omxSetParameters(model_k2, 
-                                 labels = c("phi11", "phi21", "phi12", "phi22"), 
-                                 values = runif(4, -.3, .3))
+    model_k2 <- generate_startval(model_k2)
     model_k2r <- mxRun(model_k2, silent = !verbose, suppressWarnings = TRUE)
     
     # create models for clusters 3 and 4 (if applicable):
@@ -276,9 +273,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                           mxAlgebraFromString(weighted_objectives, 
                                               name = "weightedfit"), 
                           mxFitFunctionAlgebra("weightedfit"))
-      model_k3 <- omxSetParameters(model_k3, 
-                                   labels = c("phi11", "phi21", "phi12", "phi22"), 
-                                   values = runif(4, -.3, .3))
+      model_k3 <- generate_startval(model_k3)
       model_k3r <- mxRun(model_k3, silent = !verbose, suppressWarnings = TRUE)
       
       ## cluster 4:
@@ -288,9 +283,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                           mxAlgebraFromString(weighted_objectives, 
                                               name = "weightedfit"), 
                           mxFitFunctionAlgebra("weightedfit"))
-      model_k4 <- omxSetParameters(model_k4, 
-                                   labels = c("phi11", "phi21", "phi12", "phi22"), 
-                                   values = runif(4, -.3, .3))
+      model_k4 <- generate_startval(model_k4)
       model_k4r <- mxRun(model_k4, silent = !verbose, suppressWarnings = TRUE)
     }
     
@@ -383,13 +376,13 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       if(it == 1){
         # in first iteration, get starting values from corresponding start in Part 1:
         model_k1 <- omxSetParameters(model_k1, 
-                                     labels = names(coef(model_k1)), 
+                                     labels = names(all_starts[[i]]$coefs$cluster1), 
                                      values = all_starts[[i]]$coefs$cluster1)
       }
       if(it > 1){
         # in following iterations, extract starting values from estimates of previous iteration:
         model_k1 <- omxSetParameters(model_k1, 
-                                     labels = names(coef(model_k1)), 
+                                     labels = names(coef(model_k1r)), 
                                      values = coef(model_k1r))
       }
       model_k1r <- mxRun(model_k1, silent = !verbose, suppressWarnings = TRUE)
@@ -404,12 +397,12 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                           )
       if(it == 1){
         model_k2 <- omxSetParameters(model_k2, 
-                                     labels = names(coef(model_k2)), 
+                                     labels = names(all_starts[[i]]$coefs$cluster2), 
                                      values = all_starts[[i]]$coefs$cluster2)
       }
       if(it > 1){
         model_k2 <- omxSetParameters(model_k2, 
-                                     labels = names(coef(model_k2)), 
+                                     labels = names(coef(model_k2r)), 
                                      values = coef(model_k2r))
       }
       model_k2r <- mxRun(model_k2, silent = !verbose, suppressWarnings = TRUE)
@@ -425,12 +418,12 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                             mxFitFunctionAlgebra("weightedfit"))
         if(it == 1){
           model_k3 <- omxSetParameters(model_k3, 
-                                       labels = names(coef(model_k3)), 
+                                       labels = names(all_starts[[i]]$coefs$cluster3), 
                                        values = all_starts[[i]]$coefs$cluster3)
         }
         if(it > 1){
           model_k3 <- omxSetParameters(model_k3, 
-                                       labels = names(coef(model_k3)), 
+                                       labels = names(coef(model_k3r)), 
                                        values = coef(model_k3r))
         }
         model_k3r <- mxRun(model_k3, silent = !verbose, suppressWarnings = TRUE)
@@ -444,12 +437,12 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                             mxFitFunctionAlgebra("weightedfit"))
         if(it == 1){
           model_k4 <- omxSetParameters(model_k4, 
-                                       labels = names(coef(model_k4)), 
+                                       labels = names(all_starts[[i]]$coefs$cluster4), 
                                        values = all_starts[[i]]$coefs$cluster4)
         }
         if(it > 1){
           model_k4 <- omxSetParameters(model_k4, 
-                                       labels = names(coef(model_k4)), 
+                                       labels = names(coef(model_k4r)), 
                                        values = coef(model_k4r))
         }
         model_k4r <- mxRun(model_k4, silent = !verbose, suppressWarnings = TRUE)

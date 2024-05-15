@@ -62,6 +62,18 @@ EStep <- function(pi_ks, ngroup, nclus, loglik){
 }
 # taken from https://github.com/AndresFPA/mmgsem/blob/main/R/E_Step.R
 
+#### generate starting values ####
+generate_startval <- function(model){
+  values <- coef(model)
+  values[grep("^phi", names(values))] <- runif(4, -.3, .3)
+  values[c("zeta1", "zeta2")] <- runif(2, .5, 1.5)
+  values["zeta12"] <- runif(1, -.3, .3)
+  model <- omxSetParameters(model,
+                            labels = names(values),
+                            values = values)
+  return(model)
+}
+
 #### safely/quietly functions ####
 run_step1 <- quietly(safely(step1))
 run_step2 <- quietly(safely(step2))
