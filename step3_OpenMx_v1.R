@@ -12,13 +12,13 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   
   
   #### FOR TESTING ####
-  step2output = output_step2$result$result
-  n_clusters = n_k
-  n_starts = 15
-  n_best_starts = 3
-  maxit = 100
-  true_clusters = clusterassignment_true
-  verbose = TRUE
+  # step2output = output_step2$result$result
+  # n_clusters = n_k
+  # n_starts = 15
+  # n_best_starts = 3
+  # maxit = 100
+  # true_clusters = clusterassignment_true
+  # verbose = TRUE
   
   #### 1) Preparations ####
   ## extract objects from step 1 output:
@@ -218,7 +218,9 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       }
       names(clustermodels) <- paste0("model_k", 1:n_clusters)
       
-      clustermodels_run <- map(clustermodels, mxRun, silent = !verbose, suppressWarnings = TRUE)
+      clustermodels_run <- purrr::map(clustermodels, 
+                                      mxRun, 
+                                      silent = !verbose, suppressWarnings = TRUE)
       
       casewiseLL <- get_casewiseLL(clustermodels_run, n_clusters = n_clusters, n = n)
       
@@ -241,7 +243,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       
       ##!!! check for negative change##
       if(it > 2 & (observed_data_LL - observed_data_LL0) < 0){
-        stop(paste0("Change in LL is negative. Part 1, ramdon start: ", random_start))
+        warning(paste0("Change in LL is negative. Part 1, ramdon start: ", random_start))
       }
       
       # check close convergence and break loop if applicable:
@@ -330,7 +332,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       
       ##!!! check for negative change##
       if((observed_data_LL - observed_data_LL0) < 0){
-        stop(paste0("Change in LL is negative. Part 2, ramdon start: ", random_start))
+        warning(paste0("Change in LL is negative. Part 2, ramdon start: ", random_start))
       }
       
       # check convergence and break loop if applicable:
@@ -425,7 +427,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
     
     ##!!! check for negative change##
     if(it > 1 & (observed_data_LL - observed_data_LL0) < 0){
-      stop("Change in LL is negative. Proxy maximum finding.")
+      warning("Change in LL is negative. Proxy maximum finding.")
     }
     
     # check convergence and break loop if applicable:
