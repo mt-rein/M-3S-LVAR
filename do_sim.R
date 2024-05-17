@@ -33,6 +33,10 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   seed_cond <- cond$seed[pos]
   set.seed(seed_cond)
   
+  # change some global options in OpenMx:
+  mxOption(key = "Calculate Hessian", value = "No")
+  mxOption(key = "Standard Errors", value = "No") 
+  
   #### set data generation parameters ####
   ## regression parameters:
   # cluster 1
@@ -354,7 +358,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   if(!step1_error & !step2_error){                                              # only proceed if there is no error in step 1 as well as step 2
     output_step3 <- run_step3(step2output = output_step2$result$result,
                               n_clusters = n_k,
-                              n_starts = 25, n_best_starts = 5,
+                              n_starts = 15, n_best_starts = 5,
                               maxit = 100,
                               true_clusters = clusterassignment_true, 
                               verbose = FALSE)
@@ -392,11 +396,11 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     
     for(i in 1:nrow(combinations)){
       # relabel the clusters:
-      colnames(final_output$clustering$assignment) <- combinations[i, 1:n_k]
+      colnames(final_output$clustering$modal_assignment) <- combinations[i, 1:n_k]
       # create a vector that indicates the assigned cluster for each individual (instead of a matrix):
-      clusterassignment_estimated <- apply(final_output$clustering$assignment, 1, 
+      clusterassignment_estimated <- apply(final_output$clustering$modal_assignment, 1, 
                                            function(row) {
-                                             colnames(final_output$clustering$assignment)[which(row == 1)]
+                                             colnames(final_output$clustering$modal_assignment)[which(row == 1)]
                                            })
       # creates a cross table of estimated and true cluster assignments:
       crosstable <- table(clusterassignment_estimated, clusterassignment_true)
@@ -407,7 +411,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     newlabels <- combinations[which.max(combinations$diagsum), 1:n_k]
     
     # swap the labels accordingly in the output of step 3:
-    names(final_output$estimates) <- colnames(final_output$clustering$posterior_prob) <- names(final_output$clustering$class_proportions) <- colnames(final_output$clustering$assignment) <- newlabels
+    names(final_output$estimates) <- colnames(final_output$clustering$posterior_prob) <- names(final_output$clustering$class_proportions) <- colnames(final_output$clustering$modal_assignment) <- newlabels
     
     ## extract estimates
     # estimates in cluster 1:
@@ -475,9 +479,9 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     }
     
     # ARI:
-    clusterassignment_estimated <- apply(final_output$clustering$assignment, 1, 
+    clusterassignment_estimated <- apply(final_output$clustering$modal_assignment, 1, 
                                          function(row) {
-                                           colnames(final_output$clustering$assignment)[which(row == 1)]
+                                           colnames(final_output$clustering$modal_assignment)[which(row == 1)]
                                          })
     ARI <- mcclust::arandi(clusterassignment_true, clusterassignment_estimated, adjust = TRUE)
     
@@ -525,6 +529,11 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     ARI <- NA
     local_max <- NA
   }
+  
+  # reset the OpenMx parameters:
+  mxOption(key = "Calculate Hessian", reset = TRUE) 
+  mxOption(key = "Standard Errors", reset = TRUE)
+  mxOption(key = "Major Iterations", reset = TRUE)
   
   output <- c("iteration" = iteration, "replication" = replication,
               "n" = n, "obs" = obs, "n_k" = n_k, "k_size" = k_size, "rho_gen" = rho_gen, 
