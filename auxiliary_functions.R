@@ -74,6 +74,34 @@ generate_startval <- function(model){
   return(model)
 }
 
+#### create OpenMx model ####
+create_model <- function(modelname, weights, objectives, model_list){
+  weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
+  model <- mxModel(modelname, model_list, 
+                   mxAlgebraFromString(weighted_objectives, 
+                                       name = "weightedfit"), 
+                   mxFitFunctionAlgebra("weightedfit"))
+  return(model)
+}
+
+# extract casewise log-likelihoods from fitted OpenMx models ####
+get_casewiseLL <- function(models_run, n_clusters, n){
+  casewiseLL <- matrix(NA,
+                       nrow = n, 
+                       ncol = n_clusters)
+  for(i in 1:n_clusters){
+    casewiseLL[, i] <- purrr::map_dbl(models_run[[i]]$submodels, ~ .x$fitfunction$result)
+  }
+  casewiseLL <- casewiseLL/(-2)                                                 #OpenMx gives -2 log Likelihood, so I need to divide by -2
+  return(casewiseLL)
+}
+
+#### compute observed data log-likelihood
+compute_observed_data_LL <- function(casewiseLL, class_proportions){
+  observed_data_LL <- sum(log(rowSums(class_proportions*exp(casewiseLL))))
+  return(observed_data_LL)
+}
+
 #### safely/quietly functions ####
 run_step1 <- quietly(safely(step1))
 run_step2 <- quietly(safely(step2))
