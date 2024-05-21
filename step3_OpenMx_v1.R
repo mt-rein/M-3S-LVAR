@@ -160,7 +160,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   names(personmodel_list) <- personmodelnames
   
   #### 5) mixture modeling ####
-  #set.seed(8389493)#!!!! work on the whole replicability thing!!!!
+  #!!!! work on the whole replicability thing!!!!
   # provide seeds for the multiple starts (for replicability)
   seeds <- sample(1:100000000, n_starts)
   estimation_start <- Sys.time()
@@ -382,7 +382,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                     nclus = n_clusters, loglik = casewiseLL)
     }
     
-    # compute class proportions:
+    # update class proportions:
     class_proportions <- colMeans(post)
     
     ## M-step: fitting SSM model and update parameter estimates
@@ -405,7 +405,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
     }
     names(clustermodels) <- paste0("model_k", 1:n_clusters)
     
-    clustermodels_run <- map(clustermodels, mxRun, silent = !verbose, suppressWarnings = TRUE)
+    clustermodels_run <- purrr::map(clustermodels, mxRun, silent = !verbose, suppressWarnings = TRUE)
     
     casewiseLL <- get_casewiseLL(clustermodels_run, n_clusters = n_clusters, n = n)
     
@@ -444,12 +444,12 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   proxy_maximum <- observed_data_LL
   
   
-  #### 5) extract estimates ####
+  #### 6) extract estimates ####
   estimates <- lapply(best_models, coef)
   loglik <- best_loglik
-  post <- best_post
-  colnames(post) <- paste0("cluster", 1:n_clusters)
-  modal_assignment <- round(post)
+  post <- as.data.frame(best_post)
+  names(estimates) <- colnames(post) <- paste0("cluster", 1:n_clusters)
+  modal_assignment <- t(apply(post, MARGIN = 1, function(x) ifelse(x == max(x), 1, 0)))
   class_proportions <- colMeans(post)
   
   
@@ -463,7 +463,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                 "proxy_maximum" = proxy_maximum,
                 "duration" = duration)
   
-  #### 5) build the output ####
+  #### 7) build the output ####
   output <- list("data" = data,
                  "estimates" = estimates,
                  "clustering" = clustering,

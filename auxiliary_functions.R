@@ -62,7 +62,8 @@ EStep <- function(pi_ks, ngroup, nclus, loglik){
 }
 # taken from https://github.com/AndresFPA/mmgsem/blob/main/R/E_Step.R
 
-#### generate starting values ####
+#### generate_startval() ####
+# generate starting values
 generate_startval <- function(model){
   values <- coef(model)
   values[grep("^phi", names(values))] <- runif(4, -.3, .3)
@@ -74,7 +75,8 @@ generate_startval <- function(model){
   return(model)
 }
 
-#### create OpenMx model ####
+#### create_model() ####
+# create OpenMx model
 create_model <- function(modelname, weights, objectives, model_list){
   weighted_objectives <- paste(weights, "*", objectives, collapse = " + ")
   model <- mxModel(modelname, model_list, 
@@ -84,6 +86,7 @@ create_model <- function(modelname, weights, objectives, model_list){
   return(model)
 }
 
+#### get_casewiseLL ####
 # extract casewise log-likelihoods from fitted OpenMx models ####
 get_casewiseLL <- function(models_run, n_clusters, n){
   casewiseLL <- matrix(NA,
