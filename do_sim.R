@@ -18,7 +18,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   # rho_gen =  "large" |> as.character()
   # similarity =  "dissimilar" |> as.character()
   # innovars =  "equal" |> as.character()
-  
+
   
   replication <- cond$replication[pos]
   iteration <- cond$iteration[pos]
@@ -397,11 +397,12 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     for(i in 1:nrow(combinations)){
       # relabel the clusters:
       colnames(final_output$clustering$modal_assignment) <- combinations[i, 1:n_k]
-      # create a vector that indicates the assigned cluster for each individual (instead of a matrix):
-      clusterassignment_estimated <- apply(final_output$clustering$modal_assignment, 1, 
-                                           function(row) {
-                                             colnames(final_output$clustering$modal_assignment)[which(row == 1)]
-                                           })
+      clusterassignment_estimated = character(n)
+      for(j in 1:n){
+        index <- which(final_output$clustering$modal_assignment[j, ] == 1)
+        clusterassignment_estimated[j] <- colnames(final_output$clustering$modal_assignment)[index]
+      }
+      
       # creates a cross table of estimated and true cluster assignments:
       crosstable <- table(clusterassignment_estimated, clusterassignment_true)
       # compute the sum of the diagonal of the cross table and save it

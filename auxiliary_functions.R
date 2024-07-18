@@ -101,8 +101,10 @@ get_casewiseLL <- function(models_run, n_clusters, n){
 
 #### compute_observed_data_LL ####
 compute_observed_data_LL <- function(casewiseLL, class_proportions){
+  # create a matrix of the class proportions (for summing with casewiseLL):
   matrixcp <- matrix(class_proportions, nrow = nrow(casewiseLL), 
                      ncol = length(class_proportions), byrow = TRUE)
+  # compute observed data LL:
   observed_data_LL <- (log(matrixcp) + casewiseLL)  |> exp() |> rowSums() |> log() |> sum()
   
   return(observed_data_LL)

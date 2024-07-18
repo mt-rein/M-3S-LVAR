@@ -12,13 +12,13 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   
   
   #### FOR TESTING ####
-  step2output = output_step2$result$result
-  n_clusters = n_k
-  n_starts = 8
-  n_best_starts = 3
-  maxit = 100
-  true_clusters = clusterassignment_true
-  verbose = TRUE
+  # step2output = output_step2$result$result
+  # n_clusters = n_k
+  # n_starts = 20
+  # n_best_starts = 5
+  # maxit = 100
+  # true_clusters = clusterassignment_true
+  # verbose = TRUE
   
   #### 1) Preparations ####
   ## extract objects from step 1 output:
@@ -326,8 +326,9 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       }
       names(clustermodels) <- paste0("model_k", 1:n_clusters)
       
-      clustermodels_run <- map(clustermodels, mxRun, silent = !verbose, suppressWarnings = TRUE)
-      
+      clustermodels_run <- purrr::map(clustermodels, 
+                                      mxRun, 
+                                      silent = !verbose, suppressWarnings = TRUE)      
       casewiseLL <- get_casewiseLL(clustermodels_run, n = n, n_clusters = n_clusters)
       
       # compute complete-data log likelihood
@@ -412,17 +413,17 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                             objectives = objectives,
                             model_list = personmodel_list)
       if(it == 1){
-        #model <- generate_startval(model)
-        if(i == 1){
-          model <- omxSetParameters(model,
-                                    labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
-                                    values = c(phimat_k1, zetamat[c(1, 2, 4)]))
-        }
-        if(i == 2){
-          model <- omxSetParameters(model,
-                                    labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
-                                    values = c(phimat_k2, zetamat[c(1, 2, 4)]))
-        }
+        model <- generate_startval(model)
+        # if(i == 1){
+        #   model <- omxSetParameters(model,
+        #                             labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
+        #                             values = c(phimat_k1, zetamat[c(1, 2, 4)]))
+        # }
+        # if(i == 2){
+        #   model <- omxSetParameters(model,
+        #                             labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
+        #                             values = c(phimat_k2, zetamat[c(1, 2, 4)]))
+        # }
       } else {
         model <- omxSetParameters(model,
                                   labels = names(coef(clustermodels_run[[i]])),
@@ -433,8 +434,9 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
     }
     names(clustermodels) <- paste0("model_k", 1:n_clusters)
     
-    clustermodels_run <- purrr::map(clustermodels, mxRun, silent = !verbose, suppressWarnings = TRUE)
-    
+    clustermodels_run <- purrr::map(clustermodels, 
+                                    mxRun, 
+                                    silent = !verbose, suppressWarnings = TRUE)    
     casewiseLL <- get_casewiseLL(clustermodels_run, n_clusters = n_clusters, n = n)
     
     # compute complete-data log likelihood
