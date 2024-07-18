@@ -12,13 +12,13 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   
   
   #### FOR TESTING ####
-  # step2output = output_step2$result$result
-  # n_clusters = n_k
-  # n_starts = 15
-  # n_best_starts = 3
-  # maxit = 100
-  # true_clusters = clusterassignment_true
-  # verbose = TRUE
+  step2output = output_step2$result$result
+  n_clusters = n_k
+  n_starts = 8
+  n_best_starts = 3
+  maxit = 100
+  true_clusters = clusterassignment_true
+  verbose = TRUE
   
   #### 1) Preparations ####
   ## extract objects from step 1 output:
@@ -47,6 +47,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   
   ## A matrices (= dynamics)
   amat <- mxMatrix(type = "Full", nrow = xdim, ncol = xdim,
+                   name = "A",
                    free = c(TRUE, TRUE, FALSE, FALSE,
                             TRUE, TRUE, FALSE, FALSE,
                             FALSE, FALSE, FALSE, FALSE,
@@ -55,7 +56,6 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                               .1, .1, 0, 1,
                               0, 0, 1, 0,
                               0, 0, 0, 1),
-                   name = "A",
                    labels = c("phi11", "phi12", NA, NA,
                               "phi21", "phi22", NA, NA,
                               NA, NA, NA, NA,
@@ -76,12 +76,12 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   
   # C matrix (= factor loadings, here fixed to rho)
   cmat <- mxMatrix('Full', nrow = ydim, ncol = xdim,
-                   free = c(FALSE),
+                   name='C',
+                   free = FALSE,
                    values = c(rho[1], 0, 0, 0,
                               0, rho[2], 0, 0),
                    labels = NA,
                    byrow = TRUE,
-                   name='C',
                    dimnames = list(factors_ind, c(paste0(factors),
                                                   paste0("intercept_", factors))
                    )
@@ -92,49 +92,62 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                    name='D')
   
   # Q matrix (= innovation (co)variances)
-  qmat <- mxMatrix("Full", xdim, xdim,
-                   free = c(TRUE, TRUE, FALSE, FALSE,
-                            TRUE, TRUE, FALSE, FALSE,
-                            FALSE, FALSE, FALSE, FALSE,
-                            FALSE, FALSE, FALSE, FALSE),
-                   values = c(1, .3, 0, 0,
-                              .3, 1, 0, 0,
-                              0, 0,  0, 0,
-                              0, 0,  0, 0),
+  qmat <- mxMatrix("Symm", xdim, xdim,
                    name = "Q",
-                   labels = c("zeta1", "zeta12", NA, NA,
-                              "zeta12", "zeta2", NA, NA,
-                              NA, NA, NA, NA,
+                   free = c(TRUE,
+                            TRUE, TRUE,
+                            FALSE, FALSE, FALSE,
+                            FALSE, FALSE, FALSE, FALSE),
+                   values = c(1,
+                              .3, 1,
+                              0, 0, 0,
+                              0, 0, 0, 0),
+                   labels = c("zeta1",
+                              "zeta12", "zeta2",
+                              NA, NA, NA,
                               NA, NA, NA, NA),
-                   lbound= c(1e-6, NA, NA, NA,
-                             NA, 1e-6, NA, NA,
-                             NA, NA, NA, NA,
+                   lbound= c(1e-6,
+                             NA, 1e-6,
+                             NA, NA, NA,
                              NA, NA, NA, NA),
                    byrow = TRUE)
   
   
   # R matrix (= measurement noise, here fixed to kappa)
   rmat <- mxMatrix('Diag', nrow = ydim, ncol = ydim,
+                   name = 'R',
                    free = FALSE,
-                   values = kappa,
-                   name = 'R')
+                   values = kappa
+                   )
   
   # x0 and P0 (= initial values and (co)variances of the latent constructs)
   xmat <- mxMatrix('Full', nrow = xdim, ncol = 1,
+                   name='x0',
                    free = TRUE,
                    values = c(0, 0, 1, 1),
-                   name='x0',
                    labels = c(paste0("ini_", factors),
                               paste0("m_intercept_", factors))
   )
   
-  pmat <- mxMatrix('Diag', nrow = xdim, ncol = xdim,
-                   free = TRUE,
-                   values = c(1, 1, 1, 1),
+  pmat <- mxMatrix('Symm', nrow = xdim, ncol = xdim,
                    name='P0',
-                   labels = c(paste0("var_", factors),
-                              paste0("var_intercept_", factors))
-  )
+                   free = c(TRUE,
+                            TRUE, TRUE,
+                            FALSE, FALSE, TRUE,
+                            FALSE, FALSE, TRUE, TRUE),
+                   values = c(1,
+                              .5, 1,
+                              0, 0, 1,
+                              0, 0, .5, 1),
+                   # lbound = c(1e-2,
+                   #            NA, 1e-2,
+                   #            NA, NA,  1e-2,
+                   #            NA, NA, NA,  1e-2),
+                   labels = c("P0_f1",
+                              "P0_f1f2", "P0_f2",
+                              NA, NA, "P0_icp1",
+                              NA, NA, "P0_icp12", "P0_icp2"),
+                   byrow = TRUE)
   
   # u (= covariates)
   umat <- mxMatrix('Zero', nrow = udim, ncol = 1, name='u')
@@ -191,7 +204,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       ## E-step: update class membership (skip in first iteration) and class proportions
       if(it >1){
         # update posteriors:
-        post <- EStep(pi = class_proportions, ngroup = n, 
+        post <- EStep(pi_ks = class_proportions, ngroup = n, 
                       nclus = n_clusters, loglik = casewiseLL)
       }
       
@@ -237,13 +250,11 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
         } else {
           print(paste0("Iteration: ", it, ". Log Likelihood: ", round(observed_data_LL, 4), "."))
         }
-        
       }
-      
       
       ##!!! check for negative change##
       if(it > 2 & (observed_data_LL - observed_data_LL0) < 0){
-        warning(paste0("Change in LL is negative. Part 1, ramdon start: ", random_start))
+        warning(paste0("Change in LL is negative. Part 1, random start: ", random_start))
       }
       
       # check close convergence and break loop if applicable:
@@ -294,7 +305,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
     
     # loop over iterations until convergence or max iterations are reached
     for(it in 1:maxit){
-      post <- EStep(pi = class_proportions, ngroup = n, 
+      post <- EStep(pi_ks = class_proportions, ngroup = n, 
                     nclus = n_clusters, loglik = casewiseLL)
       
       # compute class proportions:
@@ -332,7 +343,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       
       ##!!! check for negative change##
       if((observed_data_LL - observed_data_LL0) < 0){
-        warning(paste0("Change in LL is negative. Part 2, ramdon start: ", random_start))
+        warning(paste0("Change in LL is negative. Part 2, random start: ", random_start))
       }
       
       # check convergence and break loop if applicable:
@@ -364,6 +375,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
     if(verbose){
       print(paste("Start", random_start, "out of", n_best_starts, "best starts completed."))
     }
+    
   }
   duration <- difftime(Sys.time(), estimation_start, unit = "s")
   
@@ -373,18 +385,24 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   for (i in 1:n_clusters) {
     post[true_clusters == i, i] <- 1
   }
-  observed_data_loglik0 <- -Inf
+  observed_data_LL0 <- -Inf
+  mxOption(key = "Major iterations", value = 1000)                              # reset the maximum number of iterations in OpenMx to 1000
+  
   for(it in 1:maxit){
     ## E-step: update class membership (skip in first iteration) and class proportions
     if(it >1){
       # update posteriors:
-      post <- EStep(pi = class_proportions, ngroup = n, 
+      post <- EStep(pi_ks = class_proportions, ngroup = n,
                     nclus = n_clusters, loglik = casewiseLL)
+      
+      # post <- t(t(exp(casewiseLL))*class_proportions)
+      # lik <- rowSums(post)
+      # post <- post/lik
     }
     
     # update class proportions:
     class_proportions <- colMeans(post)
-    
+
     ## M-step: fitting SSM model and update parameter estimates
     clustermodels <- vector(mode = "list", length = n_clusters)
     for (i in 1:n_clusters){
@@ -394,7 +412,17 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                             objectives = objectives,
                             model_list = personmodel_list)
       if(it == 1){
-        model <- generate_startval(model)
+        #model <- generate_startval(model)
+        if(i == 1){
+          model <- omxSetParameters(model,
+                                    labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
+                                    values = c(phimat_k1, zetamat[c(1, 2, 4)]))
+        }
+        if(i == 2){
+          model <- omxSetParameters(model,
+                                    labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
+                                    values = c(phimat_k2, zetamat[c(1, 2, 4)]))
+        }
       } else {
         model <- omxSetParameters(model,
                                   labels = names(coef(clustermodels_run[[i]])),
