@@ -66,9 +66,9 @@ EStep <- function(pi_ks, ngroup, nclus, loglik){
 # generate starting values
 generate_startval <- function(model){
   values <- coef(model)
-  values[grep("^phi", names(values))] <- runif(4, -.3, .3)
+  values[grep("^phi", names(values))] <- runif(4, .05, .3)
   values[c("zeta1", "zeta2")] <- runif(2, .5, 1.5)
-  values["zeta12"] <- runif(1, -.3, .3)
+  values["zeta12"] <- runif(1, .05, .3)
   model <- omxSetParameters(model,
                             labels = names(values),
                             values = values)
@@ -99,9 +99,12 @@ get_casewiseLL <- function(models_run, n_clusters, n){
   return(casewiseLL)
 }
 
-#### compute observed data log-likelihood
+#### compute_observed_data_LL ####
 compute_observed_data_LL <- function(casewiseLL, class_proportions){
-  observed_data_LL <- sum(log(rowSums(class_proportions*exp(casewiseLL))))
+  matrixcp <- matrix(class_proportions, nrow = nrow(casewiseLL), 
+                     ncol = length(class_proportions), byrow = TRUE)
+  observed_data_LL <- (log(matrixcp) + casewiseLL)  |> exp() |> rowSums() |> log() |> sum()
+  
   return(observed_data_LL)
 }
 
