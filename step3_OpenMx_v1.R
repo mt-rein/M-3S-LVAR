@@ -123,18 +123,15 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   # x0 and P0 (= initial values and (co)variances of the latent constructs)
   xmat <- mxMatrix('Full', nrow = xdim, ncol = 1,
                    name='x0',
-                   free = TRUE,
-                   values = c(0, 0, 1, 1),
+                   free = FALSE,
+                   values = c(0, 0, 0, 0),
                    labels = c(paste0("ini_", factors),
                               paste0("m_intercept_", factors))
   )
   
   pmat <- mxMatrix('Symm', nrow = xdim, ncol = xdim,
                    name='P0',
-                   free = c(TRUE,
-                            TRUE, TRUE,
-                            FALSE, FALSE, TRUE,
-                            FALSE, FALSE, TRUE, TRUE),
+                   free = FALSE,
                    values = c(1,
                               .5, 1,
                               0, 0, 1,
@@ -182,7 +179,7 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
   
   ## Part 1: all random starts
   all_starts <- vector(mode = "list", length = n_starts)                        # create empty vector for the output
-  mxOption(key = "Major iterations", value = 3)                                 # reduce the number of iterations when estimating the parameters in OpenMx (to speed it up)
+  mxOption(key = "Major iterations", value = 2)                                 # reduce the number of iterations when estimating the parameters in OpenMx (to speed it up)
   for(random_start in 1:n_starts){
     # set seed:
     set.seed(seeds[random_start])
@@ -220,8 +217,11 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                               objectives = objectives,
                               model_list = personmodel_list)
         if(it == 1){
+          # in first iteration, generate random starting values
           model <- generate_startval(model)
         } else {
+          # if it's not the first iteration, set starting values to estimates 
+          # from previous iteration:
           model <- omxSetParameters(model,
                                     labels = names(coef(clustermodels_run[[i]])),
                                     values = coef(clustermodels_run[[i]]))
@@ -290,9 +290,18 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
     order(decreasing = TRUE) |> 
     head(n_best_starts)
   
+  # free the x0 and P0 parameters (for greater precision):
+  personmodel_list <- purrr::map(personmodel_list,
+                                 omxSetParameters,
+                                 labels = c(paste0("ini_", factors),
+                                            paste0("m_intercept_", factors),
+                                            "P0_f1", "P0_f1f2", "P0_f2",
+                                            "P0_icp1", "P0_icp12", "P0_icp2"),
+                                 free = TRUE)
+  
   best_loglik <- -Inf
   nonconvergences <- 0
-  mxOption(key = "Major iterations", value = 1000)                              # reset the maximum number of iterations in OpenMx to 1000
+  mxOption(key = "Major iterations", value = 1000)                              # reset the maximum number of iterations in OpenMx to 1000 (for greater precision)
   for(random_start in 1:n_best_starts){
     start_number <- best_starts[random_start]
     
@@ -395,10 +404,6 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
       # update posteriors:
       post <- EStep(pi_ks = class_proportions, ngroup = n,
                     nclus = n_clusters, loglik = casewiseLL)
-      
-      # post <- t(t(exp(casewiseLL))*class_proportions)
-      # lik <- rowSums(post)
-      # post <- post/lik
     }
     
     # update class proportions:
@@ -414,16 +419,6 @@ step3 <- function(step2output, n_clusters, n_starts = 25, n_best_starts = 5,
                             model_list = personmodel_list)
       if(it == 1){
         model <- generate_startval(model)
-        # if(i == 1){
-        #   model <- omxSetParameters(model,
-        #                             labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
-        #                             values = c(phimat_k1, zetamat[c(1, 2, 4)]))
-        # }
-        # if(i == 2){
-        #   model <- omxSetParameters(model,
-        #                             labels = c("phi11", "phi21", "phi12", "phi22", "zeta1", "zeta12", "zeta2"),
-        #                             values = c(phimat_k2, zetamat[c(1, 2, 4)]))
-        # }
       } else {
         model <- omxSetParameters(model,
                                   labels = names(coef(clustermodels_run[[i]])),

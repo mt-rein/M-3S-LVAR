@@ -1,11 +1,3 @@
-# only for testing!
-# data <- read.csv("examples/exampledata.csv")
-# measurementmodel <- "
-#   f1 =~ v1 + v2 + v3 + v4
-#   f2 =~ v5 + v6 + v7 + v8
-#   "
-# id = "id"
-
 step1 <- function(data, measurementmodel, id){
   # data:
   #   a data frame with the indicator and ID variables
