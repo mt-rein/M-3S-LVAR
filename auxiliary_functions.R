@@ -16,10 +16,12 @@ sim_VAR <- function(factors, obs, phi, zeta, mu, burn_in = 0){
   
   intercept <- solve(solve(diag(factors) - phi), mu)
   
+  totalvar <- solve(diag(2*2) - kronecker(phi,phi)) %*% c(zeta) |> matrix(ncol = 2)
+  
   for(i in 1:nrow(data)){
     # simulate the first observation from the person's starting point (= intercept)
     if(i == 1){
-      data[i,] <- mu
+      data[i,] <- MASS::mvrnorm(n = 1, mu = mu, Sigma = totalvar)
     }
     
     # then loop through all the rows, predict the current observation from the previous observations, then add random innovation
