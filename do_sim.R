@@ -15,9 +15,9 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   # obs <- 50
   # n_k = 2
   # k_size =  "balanced" |> as.character()
-  # rho_gen =  "large" |> as.character()
-  # similarity =  "dissimilar" |> as.character()
-  # innovars =  "equal" |> as.character()
+  # rho_gen =  "high" |> as.character()
+  # cluster_separation =  "high" |> as.character()
+  # innovars =  "invariant" |> as.character()
 
   
   replication <- cond$replication[pos]
@@ -28,7 +28,7 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   n_k = cond$n_k[pos]
   k_size =  cond$k_size[pos] |> as.character()
   rho_gen =  cond$rho_gen[pos] |> as.character()
-  similarity =  cond$similarity[pos] |> as.character()
+  cluster_separation =  cond$cluster_separation[pos] |> as.character()
   innovars =  cond$innovars[pos] |> as.character()
   seed_cond <- cond$seed[pos]
   set.seed(seed_cond)
@@ -40,13 +40,13 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   #### set data generation parameters ####
   ## regression parameters:
   # cluster 1
-  if(similarity == "similar"){
+  if(cluster_separation == "low"){
     phi11_k1_pop <- .3
     phi22_k1_pop <- .6
     phi12_k1_pop <- .3
     phi21_k1_pop <- .3
   }
-  if(similarity == "dissimilar"){
+  if(cluster_separation == "high"){
     phi11_k1_pop <- 0
     phi22_k1_pop <- .6
     phi12_k1_pop <- .3
@@ -54,13 +54,13 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   }
   
   # cluster 2
-  if(similarity == "similar"){
+  if(cluster_separation == "low"){
     phi11_k2_pop <- .6
     phi22_k2_pop <- .6
     phi12_k2_pop <- 0
     phi21_k2_pop <- .3
   }
-  if(similarity == "dissimilar"){
+  if(cluster_separation == "high"){
     phi11_k2_pop <- .6
     phi22_k2_pop <- .6
     phi12_k2_pop <- -.3
@@ -71,13 +71,13 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   if(n_k  == 4){
     ## in case of 4 clusters, set regression parameters
     # cluster 3:
-    if(similarity == "similar"){
+    if(cluster_separation == "low"){
       phi11_k3_pop <- .6
       phi22_k3_pop <- .3
       phi12_k3_pop <- .3
       phi21_k3_pop <- .3
     }
-    if(similarity == "dissimilar"){
+    if(cluster_separation == "high"){
       phi11_k3_pop <- .6
       phi22_k3_pop <- 0
       phi12_k3_pop <- .3
@@ -85,13 +85,13 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     }
     
     # cluster 4:
-    if(similarity == "similar"){
+    if(cluster_separation == "low"){
       phi11_k4_pop <- .6
       phi22_k4_pop <- .6
       phi12_k4_pop <- .3
       phi21_k4_pop <- 0
     }
-    if(similarity == "dissimilar"){
+    if(cluster_separation == "high"){
       phi11_k4_pop <- .6
       phi22_k4_pop <- .6
       phi12_k4_pop <- .3
@@ -131,13 +131,13 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   
   
   ## innovation variances
-  # fixed effect innovation covariance matrix is equal across clusters
+  # fixed effect innovation covariance matrix is invariant across clusters
   zeta1_pop <- 1.5
   zeta2_pop <- 1.5
   zeta12_pop <- .5
   
   ## means
-  # cluster mean is equal across clusters
+  # cluster mean is invariant across clusters
   grandmeans <- c(5, 5)
   
   #### generate factor scores ####
@@ -191,8 +191,8 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
     }
     
     # set innovation variance matrix:
-    if(innovars == "equal"){
-      # if innovation (co)variance matrix is equal across persons, set to population values
+    if(innovars == "invariant"){
+      # if innovation (co)variance matrix is invariant across persons, set to population values
       zeta1_i <- zeta1_pop
       zeta2_i <- zeta2_pop
       zeta12_i <- zeta12_pop
@@ -263,20 +263,14 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   }
   
   # initial values for error variances
-  initial_errorvars <- rep(0.5, 8)
+  initial_errorvars <- 0.5
   
   # target values for rho
-  if(rho_gen == "small"){
-    target_rho <- c(0.5, 0.5)
+  if(rho_gen == "low"){
+    target_rho <- c(0.6, 0.6)
   }
-  if(rho_gen == "medium"){
-    target_rho <- c(0.7, 0.7)
-  }
-  if(rho_gen == "large"){
+  if(rho_gen == "high"){
     target_rho <- c(0.9, 0.9)
-  }
-  if(rho_gen == "very large"){
-    target_rho <- c(0.99, 0.99)
   }
   
   
@@ -309,11 +303,14 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   
   
   #### Step 1 ####
-  model_step1 <- "
-  f1 =~ v1 + v2 + v3 + v4
-  f2 =~ v5 + v6 + v7 + v8
-  "
-  output_step1 <- run_step1(data = data, measurementmodel = model_step1, id = "id")
+  model_step1 <- list("f1 =~ v1 + v2 + v3 + v4",
+                      "f2 =~ v5 + v6 + v7 + v8")
+  
+  output_step1 <- run_step1(data = data,
+                            measurementmodel = model_step1,
+                            id = "id",
+                            invariances = c("loadings", "intercepts"),
+                            partial_noninvariances = NULL)
   # extract error/warning messages (if applicable):
   step1_warning <- ifelse(is_empty(output_step1$warnings),
                           FALSE, TRUE)
@@ -347,11 +344,47 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
                                paste(c(output_step2$result$error),
                                      collapse = "; ")
     )
+    # lambdas_est <- lavInspect(output_step1$result$result$fit_step1, "est")$lambda
+    # lambda2 <- lambdas_est[2,1]
+    # lambda3 <- lambdas_est[3,1]
+    # lambda4 <- lambdas_est[4,1]
+    # lambda5 <- lambdas_est[5,2]
+    # lambda6 <- lambdas_est[6,1]
+    # lambda7 <- lambdas_est[7,1]
+    # lambda8 <- lambdas_est[8,1]
+    # 
+    # thetas_est <- lavInspect(output_step1$result$result$fit_step1, "est")$theta
+    # theta1 <- thetas_est[1,1]
+    # theta2 <- thetas_est[2,2]
+    # theta3 <- thetas_est[3,3]
+    # theta4 <- thetas_est[4,4]
+    # theta5 <- thetas_est[5,5]
+    # theta6 <- thetas_est[6,6]
+    # theta7 <- thetas_est[7,7]
+    # theta8 <- thetas_est[8,8] 
   } else {
     step2_warning <- FALSE
     step2_warning_text <- "step1 not successful"
     step2_error <- FALSE
     step2_error_text <- "step1 not successful"
+    
+    # lambda1 <- NA
+    # lambda2 <- NA
+    # lambda3 <- NA
+    # lambda4 <- NA
+    # lambda5 <- NA
+    # lambda6 <- NA
+    # lambda7 <- NA
+    # lambda8 <- NA
+    # 
+    # theta1 <- NA
+    # theta2 <- NA
+    # theta3 <- NA
+    # theta4 <- NA
+    # theta5 <- NA
+    # theta6 <- NA
+    # theta7 <- NA
+    # theta8 <- NA 
   }
   
   #### Step 3 ####
@@ -538,13 +571,18 @@ do_sim <- function(pos, cond, outputfile, verbose = FALSE){
   
   output <- c("iteration" = iteration, "replication" = replication,
               "n" = n, "obs" = obs, "n_k" = n_k, "k_size" = k_size, "rho_gen" = rho_gen, 
-              "similarity" = similarity, "innovars" = innovars,
+              "cluster_separation" = cluster_separation, "innovars" = innovars,
               "duration" = duration, "nonconvergences" = nonconvergences, "ARI" = ARI, "local_max" = local_max,
               "phi11_k1_pop" = phi11_k1_pop, "phi12_k1_pop" = phi12_k1_pop, "phi21_k1_pop" = phi21_k1_pop, "phi22_k1_pop" = phi22_k1_pop,
               "phi11_k2_pop" = phi11_k2_pop, "phi12_k2_pop" = phi12_k2_pop, "phi21_k2_pop" = phi21_k2_pop, "phi22_k2_pop" = phi22_k2_pop,
               "phi11_k3_pop" = phi11_k3_pop, "phi12_k3_pop" = phi12_k3_pop, "phi21_k3_pop" = phi21_k3_pop, "phi22_k3_pop" = phi22_k3_pop,
               "phi11_k4_pop" = phi11_k4_pop, "phi12_k4_pop" = phi12_k4_pop, "phi21_k4_pop" = phi21_k4_pop, "phi22_k4_pop" = phi22_k4_pop,
               "zeta1_pop" = zeta1_pop, "zeta2_pop" = zeta2_pop, "zeta12_pop" = zeta12_pop,
+              "lambda2" = lambda2, "lambda3" = lambda3, "lambda4" = lambda4, 
+              "lambda5" = lambda5, "lambda6" = lambda6, "lambda7" = lambda7, "lambda8" = lambda8,
+              "theta_pop" = optimized_errorvars,
+              "theta1" = theta1, "theta2" = theta2, "theta3" = theta3, "theta4" = theta4, 
+              "theta5" = theta5, "theta6" = theta6, "theta7" = theta7, "theta8" = theta8, 
               "phi11_k1" = phi11_k1, "phi12_k1" = phi12_k1, "phi21_k1" = phi21_k1, "phi22_k1" = phi22_k1,
               "phi11_k2" = phi11_k2, "phi12_k2" = phi12_k2, "phi21_k2" = phi21_k2, "phi22_k2" = phi22_k2,
               "phi11_k3" = phi11_k3, "phi12_k3" = phi12_k3, "phi21_k3" = phi21_k3, "phi22_k3" = phi22_k3,

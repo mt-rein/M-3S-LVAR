@@ -23,19 +23,19 @@ library(parallel)
 # load functions
 source("step1.R")
 source("step2.R")
-source("step3_OpenMx_v1.R")
+source("step3.R")
 source("do_sim.R")
 source("auxiliary_functions.R")
 
 #### define condition grid
-cond <- expand.grid(replication = 1:3,
-                    n = c(48, 96),#n = c(48, 96),
-                    obs = c(25, 50, 100),#obs = c(25, 50, 75, 100),
+cond <- expand.grid(replication = 1:50,
+                    n = c(48, 96),
+                    obs = c(25, 50, 100),
                     n_k = c(2, 4),
                     k_size = c("balanced", "unbalanced"),
-                    rho_gen = c("medium", "large"),#rho_gen = c("small", "medium", "large", "very large"),
-                    similarity = c("similar", "dissimilar"),
-                    innovars = c("equal", "random"))
+                    rho_gen = c("low", "high"),
+                    cluster_separation = c("low", "high"),
+                    innovars = c("invariant", "random"))
 
 # add seeds:
 set.seed(123)
@@ -82,14 +82,3 @@ end <- Sys.time()
 
 # close cluster:
 stop_backend(backend)
-
-
-library(readr)
-results <- read_csv("test.csv") |> 
-  arrange(iteration) |> 
-  mutate(k_size = factor(k_size, levels = c("balanced", "unbalanced")),
-         rho_gen = factor(rho_gen, levels = c("medium", "large")),
-         similarity = factor(similarity),
-         innovars = factor(innovars))
-
-sum(results$step3_error)

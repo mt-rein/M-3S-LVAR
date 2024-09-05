@@ -66,7 +66,7 @@ EStep <- function(pi_ks, ngroup, nclus, loglik){
 # generate starting values
 generate_startval <- function(model){
   values <- coef(model)
-  values[grep("^phi", names(values))] <- runif(4, .05, .3)
+  values[grep("^phi", names(values))] <- runif(length(grep("^phi", names(values))), .05, .3)
   values[c("zeta1", "zeta2")] <- runif(2, .5, 1.5)
   values["zeta12"] <- runif(1, .05, .3)
   model <- omxSetParameters(model,
